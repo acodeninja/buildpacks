@@ -57,7 +57,7 @@ apt-get $APT_OPTIONS -y --allow-downgrades --allow-remove-essential --allow-chan
 
 echo "Installing APT packages with dpkg" | indent 4
 for DEB in $(ls -1 $APT_CACHE_DIR/archives/*.deb); do
-  basename $DEB | indent 6
+  echo "Installing $(basename $DEB)" | indent 6
   dpkg -x $DEB $APT_ROOT/ | indent 8
 done
 
