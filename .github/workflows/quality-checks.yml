@@ -1,0 +1,22 @@
+name: quality-checks
+
+on: [push]
+
+env:
+  PACK_VERSION: 0.33.2
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          curl -sL "https://github.com/buildpacks/pack/releases/download/v$PACK_VERSION/pack-v$PACK_VERSION-linux.tgz" -o pack.tgz
+          tar -zxf pack.tgz
+          rm pack.tgz
+          sudo mv pack /usr/bin/pack
+          pack --version
+      - run: make test-pip
+        working-directory: playwright/python
+      - run: docker run test-app-pip
