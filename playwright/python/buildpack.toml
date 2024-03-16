@@ -1,0 +1,16 @@
+api = "0.10"
+
+[buildpack]
+  id = "acodeninja/python-playwright"
+  version = "0.0.1"
+
+[[dependencies]]
+  uri = "paketo-buildpacks/python"
+
+[[targets]]
+  os = "linux"
+[[targets.distros]]
+  name = "ubuntu"
+
+[[stacks]]
+  id = "io.buildpacks.samples.stacks.jammy"

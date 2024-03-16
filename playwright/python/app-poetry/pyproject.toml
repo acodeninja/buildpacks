@@ -1,0 +1,16 @@
+[tool.poetry]
+name = "app-poetry"
+version = "0.1.0"
+description = ""
+authors = []
+
+[tool.poetry.dependencies]
+python = "^3.11"
+playwright = "^1.42.0"
+pytest = "^8.1.1"
+pytest-playwright = "^0.4.4"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
