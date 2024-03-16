@@ -12,8 +12,8 @@ function indent() {
 }
 
 echo
-echo -e "\e[1m\e[34mACodeNinja Buildpack for Python Playwright \e[0m"
-echo -e "  https://github.com/acodeninja/buildpacks/python/playwright"
+echo -e "\e[1m\e[34mACodeNinja Buildpack for Playwright on Python\e[0m"
+echo -e "  https://github.com/acodeninja/buildpacks/playwright/python"
 
 echo "  Detecting playwright installation method"
 
