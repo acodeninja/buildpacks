@@ -1,0 +1,13 @@
+[_]
+schema-version = "0.2"
+id = "io.buildpacks.test-pipenv"
+version = "0.1"
+
+[io.buildpacks]
+builder = "paketobuildpacks/builder-jammy-base"
+
+[[io.buildpacks.group]]
+uri = "paketo-buildpacks/python"
+
+[[io.buildpacks.group]]
+uri = "../"

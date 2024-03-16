@@ -13,4 +13,4 @@ api = "0.10"
   name = "ubuntu"
 
 [[stacks]]
-  id = "io.buildpacks.samples.stacks.jammy"
+  id = "io.buildpacks.stacks.jammy"
