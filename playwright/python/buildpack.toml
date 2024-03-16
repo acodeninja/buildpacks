@@ -1,7 +1,7 @@
 api = "0.10"
 
 [buildpack]
-  id = "acodeninja/python-playwright"
+  id = "acodeninja/playwright-python"
   version = "0.0.1"
 
 [[dependencies]]
