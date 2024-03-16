@@ -83,7 +83,7 @@ echo -n "$APT_ROOT/usr/lib/x86_64-linux-gnu/pkgconfig:$APT_ROOT/usr/lib/i386-lin
 echo -n ":" > "$ENV_DIR/PKG_CONFIG_PATH.delim"
 
 echo "  Installing playwright cached dependencies"
-PLAYWRIGHT_BROWSERS_PATH="$CNB_LAYERS_DIR/playwright/dependencies" python -m playwright install 2>/dev/null | indent 4
+PLAYWRIGHT_BROWSERS_PATH="$CNB_LAYERS_DIR/playwright/dependencies" python -m playwright install | indent 4
 echo -n "$CNB_LAYERS_DIR/playwright/dependencies" > "$CNB_LAYERS_DIR/playwright/env/PLAYWRIGHT_BROWSERS_PATH"
 
 echo
