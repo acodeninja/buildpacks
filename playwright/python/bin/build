@@ -92,5 +92,5 @@ PLAYWRIGHT_BROWSERS_PATH="$CNB_LAYERS_DIR/playwright/dependencies" python -m pla
 #echo "    PLAYWRIGHT_BROWSERS_PATH -> \"$CNB_LAYERS_DIR/playwright/dependencies\""
 #echo
 
-echo "$CNB_LAYERS_DIR/playwright/dependencies" > "$CNB_LAYERS_DIR/playwright/env/PLAYWRIGHT_BROWSERS_PATH"
+echo -n "$CNB_LAYERS_DIR/playwright/dependencies" > "$CNB_LAYERS_DIR/playwright/env/PLAYWRIGHT_BROWSERS_PATH"
 { echo "[types]"; echo "launch = true"; echo "build = true"; echo "cache = true"; } > "$CNB_LAYERS_DIR/playwright.toml"
