@@ -1,6 +1,6 @@
 [_]
 schema-version = "0.2"
-id = "io.buildpacks.test-pipenv"
+id = "io.buildpacks.test-pip"
 version = "0.1"
 
 [io.buildpacks]
