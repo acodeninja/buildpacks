@@ -23,8 +23,15 @@ if [[ -d "/layers/paketo-buildpacks_pip-install" ]]; then
 fi
 
 if [[ -d "/layers/paketo-buildpacks_pipenv-install" ]]; then
-  echo "    Found pipenv install buildpack, setting PYTHONPATH"
-  export PYTHONPATH="$(cat /layers/paketo-buildpacks_pipenv-install/packages/env/PYTHONPATH.prepend):$PYTHONPATH"
+  echo "    Found paketo-buildpacks/pipenv-install buildpack, setting PYTHONPATH"
+  if ls "$(cat /layers/paketo-buildpacks_pipenv-install/packages/env/PYTHONPATH.prepend)" 2> /dev/null; then
+    export PYTHONPATH="$(cat /layers/paketo-buildpacks_pipenv-install/packages/env/PYTHONPATH.prepend):$PYTHONPATH"
+  else
+    echo "      PYTHONPATH needed to be hacked see https://github.com/acodeninja/buildpacks/issues/3#issuecomment-2001936562"
+    PIPENV_WORKSPACE_DIR="$(ls /layers/paketo-buildpacks_pipenv-install/packages/ | grep workspace)"
+    PYTHON_DIR="$(ls /layers/paketo-buildpacks_pipenv-install/packages/$PIPENV_WORKSPACE_DIR/lib/)"
+    export PYTHONPATH="/layers/paketo-buildpacks_pipenv-install/packages/$PIPENV_WORKSPACE_DIR/lib/$PYTHON_DIR/site-packages:$PYTHONPATH"
+  fi
 fi
 
 mkdir -p "$CNB_LAYERS_DIR/playwright/env"
