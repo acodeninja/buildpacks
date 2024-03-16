@@ -18,7 +18,7 @@ echo -e "  https://github.com/acodeninja/buildpacks/playwright/python"
 echo "  Detecting playwright installation method"
 
 if [[ -d "/layers/paketo-buildpacks_pip-install" ]]; then
-  echo "    Found pip install buildpack, setting PYTHONPATH"
+  echo "    Found paketo-buildpacks/pip-install buildpack, setting PYTHONPATH"
   export PYTHONPATH="$(cat /layers/paketo-buildpacks_pip-install/packages/env/PYTHONPATH.prepend):$PYTHONPATH"
 fi
 
