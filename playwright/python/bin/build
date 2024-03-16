@@ -84,6 +84,7 @@ echo -n ":" > "$ENV_DIR/PKG_CONFIG_PATH.delim"
 
 echo "  Installing playwright cached dependencies"
 PLAYWRIGHT_BROWSERS_PATH="$CNB_LAYERS_DIR/playwright/dependencies" python -m playwright install 2>/dev/null | indent 4
+echo -n "$CNB_LAYERS_DIR/playwright/dependencies" > "$CNB_LAYERS_DIR/playwright/env/PLAYWRIGHT_BROWSERS_PATH"
 
 #echo "  Configuring build environment"
 #echo "    PLAYWRIGHT_BROWSERS_PATH -> \"$CNB_LAYERS_DIR/playwright/dependencies\""
@@ -92,5 +93,4 @@ PLAYWRIGHT_BROWSERS_PATH="$CNB_LAYERS_DIR/playwright/dependencies" python -m pla
 #echo "    PLAYWRIGHT_BROWSERS_PATH -> \"$CNB_LAYERS_DIR/playwright/dependencies\""
 #echo
 
-echo -n "$CNB_LAYERS_DIR/playwright/dependencies" > "$CNB_LAYERS_DIR/playwright/env/PLAYWRIGHT_BROWSERS_PATH"
-{ echo "[types]"; echo "launch = true"; echo "build = true"; echo "cache = true"; } > "$CNB_LAYERS_DIR/playwright.toml"
+{ echo "[types]"; echo "launch = true"; echo "build = true"; echo "cache = false"; } > "$CNB_LAYERS_DIR/playwright.toml"
