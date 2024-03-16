@@ -6,4 +6,4 @@ build:
 
 .PHONY: test
 test: build
-	@docker run --platform linux/amd64 test-app-$$PACKAGE_MANAGER
+	@docker run --platform linux/amd64 --entrypoint test test-app-$$PACKAGE_MANAGER

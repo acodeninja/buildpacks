@@ -1,1 +1,2 @@
-web: pytest
+web: python app.py
+test: pytest
