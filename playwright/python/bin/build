@@ -86,11 +86,17 @@ echo "  Installing playwright cached dependencies"
 PLAYWRIGHT_BROWSERS_PATH="$CNB_LAYERS_DIR/playwright/dependencies" python -m playwright install 2>/dev/null | indent 4
 echo -n "$CNB_LAYERS_DIR/playwright/dependencies" > "$CNB_LAYERS_DIR/playwright/env/PLAYWRIGHT_BROWSERS_PATH"
 
-#echo "  Configuring build environment"
-#echo "    PLAYWRIGHT_BROWSERS_PATH -> \"$CNB_LAYERS_DIR/playwright/dependencies\""
-#echo
-#echo "  Configuring launch environment"
-#echo "    PLAYWRIGHT_BROWSERS_PATH -> \"$CNB_LAYERS_DIR/playwright/dependencies\""
-#echo
+echo
+echo "  Configuring build and launch environment"
+echo
+echo "    PLAYWRIGHT_BROWSERS_PATH -> \"$CNB_LAYERS_DIR/playwright/dependencies\""
+echo "    PATH -> \"$APT_ROOT/usr/bin\""
+echo "    LD_LIBRARY_PATH -> \"$APT_ROOT/lib/x86_64-linux-gnu:$APT_ROOT/lib/i386-linux-gnu:$APT_ROOT/lib:$APT_ROOT/usr/lib/x86_64-linux-gnu:$APT_ROOT/usr/lib/i386-linux-gnu:$APT_ROOT/usr/lib\""
+echo "    LIBRARY_PATH -> \"$APT_ROOT/lib/x86_64-linux-gnu:$APT_ROOT/lib/i386-linux-gnu:$APT_ROOT/lib:$APT_ROOT/usr/lib/x86_64-linux-gnu:$APT_ROOT/usr/lib/i386-linux-gnu:$APT_ROOT/usr/lib\""
+echo "    INCLUDE_PATH -> \"$APT_ROOT/usr/include:$APT_ROOT/usr/include/x86_64-linux-gnu\""
+echo "    CPATH -> \"$APT_ROOT/usr/include:$APT_ROOT/usr/include/x86_64-linux-gnu\""
+echo "    CPPPATH -> \"$APT_ROOT/usr/include:$APT_ROOT/usr/include/x86_64-linux-gnu\""
+echo "    PKG_CONFIG_PATH -> \"$APT_ROOT/usr/lib/x86_64-linux-gnu/pkgconfig:$APT_ROOT/usr/lib/i386-linux-gnu/pkgconfig:$APT_ROOT/usr/lib/pkgconfig\""
+echo
 
 { echo "[types]"; echo "launch = true"; echo "build = true"; echo "cache = false"; } > "$CNB_LAYERS_DIR/playwright.toml"
