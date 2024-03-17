@@ -12,6 +12,11 @@ if [[ -f Pipfile && -n "$(cat Pipfile | grep '^playwright')" ]]; then
   exit 0
 fi
 
+if [[ -f poetry.lock && -n "$(cat poetry.lock | grep 'name = "playwright"')" ]]; then
+  echo "requires = [{ name = \"site-packages\"}, { name = \"cpython\"}]" >> "$CNB_BP_PLAN_PATH"
+  exit 0
+fi
+
 echo "python-playwright: no dependency on playwright detected"
 
 exit 100

@@ -34,6 +34,12 @@ if [[ -d "/layers/paketo-buildpacks_pipenv-install" ]]; then
   fi
 fi
 
+if [[ -d "/layers/paketo-buildpacks_poetry-install" ]]; then
+  echo "    Found paketo-buildpacks/poetry-install buildpack, setting PYTHONPATH"
+  export PYTHONPATH="$(cat /layers/paketo-buildpacks_poetry-install/poetry-venv/env/PYTHONPATH.prepend):$PYTHONPATH"
+  export PATH="$(cat /layers/paketo-buildpacks_poetry-install/poetry-venv/env/PATH.prepend):$PATH"
+fi
+
 mkdir -p "$CNB_LAYERS_DIR/playwright/env"
 ENV_DIR="$CNB_LAYERS_DIR/playwright/env"
 
@@ -90,7 +96,7 @@ echo -n "$APT_ROOT/usr/lib/x86_64-linux-gnu/pkgconfig:$APT_ROOT/usr/lib/i386-lin
 echo -n ":" > "$ENV_DIR/PKG_CONFIG_PATH.delim"
 
 echo "  Installing playwright cached dependencies"
-PLAYWRIGHT_BROWSERS_PATH="$CNB_LAYERS_DIR/playwright/dependencies" python -m playwright install | indent 4
+PLAYWRIGHT_BROWSERS_PATH="$CNB_LAYERS_DIR/playwright/dependencies" python -m playwright install  2> /dev/null | indent 4
 echo -n "$CNB_LAYERS_DIR/playwright/dependencies" > "$CNB_LAYERS_DIR/playwright/env/PLAYWRIGHT_BROWSERS_PATH"
 
 echo
