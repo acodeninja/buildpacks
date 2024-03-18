@@ -58,13 +58,11 @@ PKG_CONFIG_PATH="$APT_ROOT/usr/lib/x86_64-linux-gnu/pkgconfig:$APT_ROOT/usr/lib/
 
 echo "Installing pip" | indent 4
 
-curl -sL https://bootstrap.pypa.io/get-pip.py -o "$APT_ROOT/get-pip.py"  | indent 6
+echo "Downloading https://bootstrap.pypa.io/get-pip.py" | indent 6
+curl -sL "https://bootstrap.pypa.io/get-pip.py" -o "$APT_ROOT/get-pip.py"  | indent 6
 python3 "$APT_ROOT/get-pip.py" | indent 6
 
-echo "Detecting playwright version" | indent 4
-
-curl -sL "https://github.com/sclevine/yj/releases/download/v5.1.0/yj-linux-$CNB_TARGET_ARCH" -o "$APT_ROOT/yj"
-chmod +x "$APT_ROOT/yj"
+echo "Installing playwright" | indent 4
 
 PLAYWRIGHT_VERSION=""
 
@@ -77,18 +75,26 @@ if [[ -z "$PLAYWRIGHT_VERSION" && -f Pipefile.lock ]]; then
 fi
 
 if [[ -z "$PLAYWRIGHT_VERSION" && -f poetry.lock ]]; then
+  if [[ -z "$CNB_TARGET_ARCH" ]]; then
+    case "$(uname -m)" in
+    "x86_64")
+      CNB_TARGET_ARCH="amd64"
+      ;;
+    esac
+  fi
+  echo "Downloading https://github.com/sclevine/yj/releases/download/v5.1.0/yj-linux-$CNB_TARGET_ARCH" | indent 6
+  curl -sL "https://github.com/sclevine/yj/releases/download/v5.1.0/yj-linux-$CNB_TARGET_ARCH" -o "$APT_ROOT/yj"
+  chmod +x "$APT_ROOT/yj"
   PLAYWRIGHT_VERSION="$(cat poetry.lock | "$APT_ROOT/yj" -t | jq -rc '.package[] | select(.name == "playwright") | .version')"
 fi
 
 if [[ -z "$PLAYWRIGHT_VERSION" ]]; then
   echo "Couldn't identify playwright version, installing latest" | indent 6
+  python3 -m pip install "playwright" | indent 6
 else
-  echo "Found playwright version $PLAYWRIGHT_VERSION" | indent 6
+  echo "Installing playwright version $PLAYWRIGHT_VERSION" | indent 6
+  python3 -m pip install "playwright==$PLAYWRIGHT_VERSION" | indent 6
 fi
-
-echo "Installing playwright $PLAYWRIGHT_VERSION" | indent 4
-
-python3 -m pip install "playwright==$PLAYWRIGHT_VERSION" | indent 6
 
 echo "Installing playwright cached dependencies" | indent 2
 PLAYWRIGHT_BROWSERS_PATH="$CNB_LAYERS_DIR/playwright/dependencies" python3 -m playwright install  2> /dev/null | indent 4
