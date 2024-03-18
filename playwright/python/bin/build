@@ -63,21 +63,21 @@ python3 "$APT_ROOT/get-pip.py" | indent 6
 
 echo "Detecting playwright version" | indent 4
 
-curl -sL "https://github.com/sclevine/yj/releases/download/v5.1.0/yj-linux-$(uname -m)" -o "$APT_ROOT/yj"
+curl -sL "https://github.com/sclevine/yj/releases/download/v5.1.0/yj-linux-$CNB_TARGET_ARCH" -o "$APT_ROOT/yj"
 chmod +x "$APT_ROOT/yj"
 
 PLAYWRIGHT_VERSION=""
 
 if [[ -n "$(find . -name "requirements*")" ]]; then
-  PLAYWRIGHT_VERSION="==$(find . -name "requirements*" | xargs cat | grep '^playwright' | awk -F'==' '{print $2}')"
+  PLAYWRIGHT_VERSION="$(find . -name "requirements*" | xargs cat | grep '^playwright' | awk -F'==' '{print $2}')"
 fi
 
 if [[ -z "$PLAYWRIGHT_VERSION" && -f Pipefile.lock ]]; then
-  PLAYWRIGHT_VERSION="$(cat Pipfile.lock | jq '.default.playwright.version')"
+  PLAYWRIGHT_VERSION="$(cat Pipfile.lock | jq '.default.playwright.version' | tr -d "=")"
 fi
 
 if [[ -z "$PLAYWRIGHT_VERSION" && -f poetry.lock ]]; then
-  PLAYWRIGHT_VERSION="==$(cat poetry.lock | "$APT_ROOT/yj" -t | jq -rc '.package[] | select(.name == "playwright") | .version')"
+  PLAYWRIGHT_VERSION="$(cat poetry.lock | "$APT_ROOT/yj" -t | jq -rc '.package[] | select(.name == "playwright") | .version')"
 fi
 
 if [[ -z "$PLAYWRIGHT_VERSION" ]]; then
@@ -86,9 +86,9 @@ else
   echo "Found playwright version $PLAYWRIGHT_VERSION" | indent 6
 fi
 
-echo "Installing playwright$PLAYWRIGHT_VERSION" | indent 4
+echo "Installing playwright $PLAYWRIGHT_VERSION" | indent 4
 
-python3 -m pip install "playwright$PLAYWRIGHT_VERSION" | indent 6
+python3 -m pip install "playwright==$PLAYWRIGHT_VERSION" | indent 6
 
 echo "Installing playwright cached dependencies" | indent 2
 PLAYWRIGHT_BROWSERS_PATH="$CNB_LAYERS_DIR/playwright/dependencies" python3 -m playwright install  2> /dev/null | indent 4
