@@ -71,7 +71,7 @@ jobs:
         run: |
           #!/usr/bin/env bash
           set -euo pipefail
-          pack buildpack package --publish "${{ steps.local-version.outputs.name }}:${{ steps.local-version.outputs.version }}" --config package.toml
+          pack buildpack package --publish "${{ steps.local-version.outputs.name }}:${{ steps.local-version.outputs.version }}"
           DIGEST="$(crane digest ${{ steps.local-version.outputs.name }}:${{ steps.local-version.outputs.version }})"
           echo "address=${{ steps.local-version.outputs.name }}@${DIGEST}" >> "$GITHUB_OUTPUT"
         working-directory: ${{ matrix.buildpack }}
