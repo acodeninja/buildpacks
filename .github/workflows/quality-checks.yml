@@ -1,5 +1,7 @@
 name: quality-checks
 
+run-name: 🔬 @${{ github.triggering_actor }} is checking quality on ${{ github.ref_name }}
+
 on: [push]
 
 env:
@@ -19,12 +21,9 @@ jobs:
       PACKAGE_MANAGER: ${{ matrix.package-manager }}
     steps:
       - uses: actions/checkout@v4
-      - name: setup-pack
-        run: |
-          curl -sL "https://github.com/buildpacks/pack/releases/download/v$PACK_VERSION/pack-v$PACK_VERSION-linux.tgz" -o pack.tgz
-          tar -zxf pack.tgz
-          rm pack.tgz
-          sudo mv pack /usr/bin/pack
-          pack --version
+      - id: setup-tools
+        uses: buildpacks/github-actions/setup-tools@v5.1.0
+      - id: setup-pack
+        uses: buildpacks/github-actions/setup-pack@v5.1.0
       - run: make test
         working-directory: playwright/python

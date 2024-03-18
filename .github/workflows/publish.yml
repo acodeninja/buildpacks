@@ -1,0 +1,86 @@
+name: publish
+
+run-name: 📋 @${{ github.triggering_actor }} is publishing a new release on ${{ github.ref_name }}
+
+on:
+  workflow_run:
+    workflows: [ quality-checks ]
+    branches: [ main ]
+    types: [ completed ]
+
+env:
+  PACK_VERSION: 0.33.2
+  REPO: ghcr.io/${{ github.repository_owner }}
+
+jobs:
+  enumerate-buildpacks:
+    runs-on: ubuntu-latest
+    outputs:
+      buildpacks: ${{ steps.buildpacks.outputs.list }}
+    steps:
+      - uses: actions/checkout@v3
+      - id: buildpacks
+        run: echo "list=$(find -L . -name 'buildpack.toml' | sed -r 's/\/buildpack.toml//g')" >> $GITHUB_OUTPUT
+
+  publish-buildpack:
+    runs-on: ubuntu-latest
+    needs:
+      - enumerate-buildpacks
+    permissions:
+      packages: write
+      contents: read
+    strategy:
+      matrix:
+        buildpack: ${{ fromJSON(needs.enumerate-buildpacks.outputs.buildpacks) }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: setup-tools
+        uses: buildpacks/github-actions/setup-tools@v5.1.0
+      - id: setup-pack
+        uses: buildpacks/github-actions/setup-pack@v5.1.0
+      - name: get local buildpack details
+        id: local-version
+        run: |
+          BUILDPACK_ID="$(cat buildpack.toml | yj -t | jq -r .buildpack.id)"
+          VERSION="$(cat buildpack.toml | yj -t | jq -r .buildpack.version)"
+          PACKAGE="$REPO/$(echo "$BUILDPACK_ID" | sed 's/\//_/g')"
+          echo "buildpack_id=$BUILDPACK_ID" >> "$GITHUB_OUTPUT"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "name=$PACKAGE" >> "$GITHUB_OUTPUT"
+        working-directory: ${{ matrix.buildpack }}
+      - name: get published version
+        id: published-version
+        uses: actions/github-script@v7
+        with:
+          result-encoding: string
+          retries: 3
+          retry-exempt-status-codes: 400,401
+          script: |
+            return await github.rest.packages
+              .getAllPackageVersionsForPackageOwnedByUser({
+                package_type: "container", 
+                username: "${{ github.repository_owner }}",
+                package_name: "${{ steps.local-version.outputs.name }}".replace(`${process.env.REPO}/`, ""),
+              })
+              .then(r => r.data[0].metadata.container.tags[0]);
+      - name: login to ghcr
+        if: steps.local-version.outputs.version > steps.published-version.outputs.result
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.repository_owner }} --password-stdin
+      - name: package buildpack
+        id: package
+        if: steps.local-version.outputs.version > steps.published-version.outputs.result
+        run: |
+          #!/usr/bin/env bash
+          set -euo pipefail
+          pack buildpack package --publish "${{ steps.local-version.outputs.name }}:${{ steps.local-version.outputs.version }}"
+          DIGEST="$(crane digest ${PACKAGE}:${VERSION})"
+          echo "address=${{ steps.local-version.outputs.name }}@${DIGEST}" >> "$GITHUB_OUTPUT"
+        working-directory: ${{ matrix.buildpack }}
+      - id: register
+        if: steps.local-version.outputs.version > steps.published-version.outputs.result
+        uses: docker://ghcr.io/buildpacks/actions/registry/request-add-entry:5.1.0
+        with:
+          token: ${{ secrets.CNB_PUBLISHER_GHTOKEN }}
+          id: ${{ steps.local-version.outputs.buildpack_id }}
+          version: ${{ steps.local-version.outputs.version }}
+          address: ${{ steps.local-version.outputs.address }}
