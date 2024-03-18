@@ -18,9 +18,9 @@ jobs:
     outputs:
       buildpacks: ${{ steps.buildpacks.outputs.list }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - id: buildpacks
-        run: echo "list=$(find -L . -name 'buildpack.toml' | sed -r 's/\/buildpack.toml//g')" >> $GITHUB_OUTPUT
+        run: echo "list=$(find -L . -name 'buildpack.toml' | sed -r 's/\/buildpack.toml//g' | jq -Rnrc '[inputs] | map(select(. != "_base"))')" >> $GITHUB_OUTPUT
 
   publish-buildpack:
     runs-on: ubuntu-latest
