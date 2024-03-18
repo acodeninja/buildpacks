@@ -83,4 +83,4 @@ jobs:
           token: ${{ secrets.CNB_PUBLISHER_GHTOKEN }}
           id: ${{ steps.local-version.outputs.buildpack_id }}
           version: ${{ steps.local-version.outputs.version }}
-          address: ${{ steps.local-version.outputs.address }}
+          address: ${{ steps.package.outputs.address }}
