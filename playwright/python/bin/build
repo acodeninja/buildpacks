@@ -15,35 +15,88 @@ echo
 echo -e "\e[1m\e[34mACodeNinja Buildpack for Playwright on Python\e[0m"
 echo -e "  https://github.com/acodeninja/buildpacks/playwright/python"
 
-echo "  Detecting playwright installation method"
-
-if [[ -d "/layers/paketo-buildpacks_pip-install" ]]; then
-  echo "    Found paketo-buildpacks/pip-install buildpack, setting PYTHONPATH"
-  export PYTHONPATH="$(cat /layers/paketo-buildpacks_pip-install/packages/env/PYTHONPATH.prepend):$PYTHONPATH"
-fi
-
-if [[ -d "/layers/paketo-buildpacks_pipenv-install" ]]; then
-  echo "    Found paketo-buildpacks/pipenv-install buildpack, setting PYTHONPATH"
-  if ls "$(cat /layers/paketo-buildpacks_pipenv-install/packages/env/PYTHONPATH.prepend)" 2> /dev/null; then
-    export PYTHONPATH="$(cat /layers/paketo-buildpacks_pipenv-install/packages/env/PYTHONPATH.prepend):$PYTHONPATH"
-  else
-    echo "      PYTHONPATH needed to be hacked see https://github.com/acodeninja/buildpacks/issues/3#issuecomment-2001936562"
-    PIPENV_WORKSPACE_DIR="$(ls /layers/paketo-buildpacks_pipenv-install/packages/ | grep workspace)"
-    PYTHON_DIR="$(ls /layers/paketo-buildpacks_pipenv-install/packages/$PIPENV_WORKSPACE_DIR/lib/)"
-    export PYTHONPATH="/layers/paketo-buildpacks_pipenv-install/packages/$PIPENV_WORKSPACE_DIR/lib/$PYTHON_DIR/site-packages:$PYTHONPATH"
-  fi
-fi
-
-if [[ -d "/layers/paketo-buildpacks_poetry-install" ]]; then
-  echo "    Found paketo-buildpacks/poetry-install buildpack, setting PYTHONPATH"
-  export PYTHONPATH="$(cat /layers/paketo-buildpacks_poetry-install/poetry-venv/env/PYTHONPATH.prepend):$PYTHONPATH"
-  export PATH="$(cat /layers/paketo-buildpacks_poetry-install/poetry-venv/env/PATH.prepend):$PATH"
-fi
-
 mkdir -p "$CNB_LAYERS_DIR/playwright/env"
 ENV_DIR="$CNB_LAYERS_DIR/playwright/env"
 
-echo "  Installing playwright APT dependencies"
+echo "  Installing buildpack APT dependencies"
+readarray -t APT_PACKAGES < "$CNB_BUILDPACK_DIR/packages/ubuntu-jammy.txt"
+APT_ROOT="$CNB_LAYERS_DIR/playwright/temp"
+APT_CACHE_DIR="$APT_ROOT/cache"
+APT_STATE_DIR="$APT_ROOT/state"
+APT_SOURCELIST_DIR="$APT_ROOT/sources"
+APT_SOURCES="$APT_SOURCELIST_DIR/sources.list"
+
+rm -rf "$APT_CACHE_DIR"
+mkdir -p "$APT_CACHE_DIR/archives/partial"
+mkdir -p "$APT_STATE_DIR/lists/partial"
+mkdir -p "$APT_SOURCELIST_DIR"
+
+cat "/etc/apt/sources.list" > "$APT_SOURCES"
+
+APT_OPTIONS="-o debug::nolocking=true -o dir::cache=$APT_CACHE_DIR -o dir::state=$APT_STATE_DIR"
+APT_OPTIONS="$APT_OPTIONS -o dir::etc::sourcelist=$APT_SOURCES -o dir::etc::sourceparts=/dev/null"
+
+echo "Updating APT sources" | indent 4
+apt-get $APT_OPTIONS update 2> >(grep -v "rm: cannot remove") | indent 6
+
+echo "Downloading APT packages" | indent 4
+apt-get $APT_OPTIONS -y --allow-downgrades --allow-remove-essential --allow-change-held-packages -d install --reinstall python3 jq | indent 6
+
+echo "Installing APT packages with dpkg" | indent 4
+for DEB in $(ls -1 $APT_CACHE_DIR/archives/*.deb); do
+  echo "Installing $(basename $DEB)" | indent 6
+  dpkg -x $DEB $APT_ROOT/ | indent 8
+done
+
+PATH="$APT_ROOT/usr/bin:$APT_ROOT/usr/local/bin:$PATH"
+LD_LIBRARY_PATH="$APT_ROOT/lib/x86_64-linux-gnu:$APT_ROOT/lib/i386-linux-gnu:$APT_ROOT/lib:$APT_ROOT/usr/lib/x86_64-linux-gnu:$APT_ROOT/usr/lib/i386-linux-gnu:$APT_ROOT/usr/lib"
+LIBRARY_PATH="$APT_ROOT/lib/x86_64-linux-gnu:$APT_ROOT/lib/i386-linux-gnu:$APT_ROOT/lib:$APT_ROOT/usr/lib/x86_64-linux-gnu:$APT_ROOT/usr/lib/i386-linux-gnu:$APT_ROOT/usr/lib"
+INCLUDE_PATH="$APT_ROOT/usr/include:$APT_ROOT/usr/include/x86_64-linux-gnu"
+CPATH="$APT_ROOT/usr/include:$APT_ROOT/usr/include/x86_64-linux-gnu"
+CPPPATH="$APT_ROOT/usr/include:$APT_ROOT/usr/include/x86_64-linux-gnu"
+PKG_CONFIG_PATH="$APT_ROOT/usr/lib/x86_64-linux-gnu/pkgconfig:$APT_ROOT/usr/lib/i386-linux-gnu/pkgconfig:$APT_ROOT/usr/lib/pkgconfig"
+
+echo "Installing pip" | indent 4
+
+curl -sL https://bootstrap.pypa.io/get-pip.py -o "$APT_ROOT/get-pip.py"  | indent 6
+python3 "$APT_ROOT/get-pip.py" | indent 6
+
+echo "Detecting playwright version" | indent 4
+
+curl -sL "https://github.com/sclevine/yj/releases/download/v5.1.0/yj-linux-$(uname -m)" -o "$APT_ROOT/yj"
+chmod +x "$APT_ROOT/yj"
+
+PLAYWRIGHT_VERSION=""
+
+if [[ -n "$(find . -name "requirements*")" ]]; then
+  PLAYWRIGHT_VERSION="==$(find . -name "requirements*" | xargs cat | grep '^playwright' | awk -F'==' '{print $2}')"
+fi
+
+if [[ -z "$PLAYWRIGHT_VERSION" && -f Pipefile.lock ]]; then
+  PLAYWRIGHT_VERSION="$(cat Pipfile.lock | jq '.default.playwright.version')"
+fi
+
+if [[ -z "$PLAYWRIGHT_VERSION" && -f poetry.lock ]]; then
+  PLAYWRIGHT_VERSION="==$(cat poetry.lock | "$APT_ROOT/yj" -t | jq -rc '.package[] | select(.name == "playwright") | .version')"
+fi
+
+if [[ -z "$PLAYWRIGHT_VERSION" ]]; then
+  echo "Couldn't identify playwright version, installing latest" | indent 6
+else
+  echo "Found playwright version $PLAYWRIGHT_VERSION" | indent 6
+fi
+
+echo "Installing playwright$PLAYWRIGHT_VERSION" | indent 4
+
+python3 -m pip install "playwright$PLAYWRIGHT_VERSION" | indent 6
+
+echo "Installing playwright cached dependencies" | indent 2
+PLAYWRIGHT_BROWSERS_PATH="$CNB_LAYERS_DIR/playwright/dependencies" python3 -m playwright install  2> /dev/null | indent 4
+echo -n "$CNB_LAYERS_DIR/playwright/dependencies" > "$CNB_LAYERS_DIR/playwright/env/PLAYWRIGHT_BROWSERS_PATH"
+
+rm -r "$APT_ROOT"
+
+echo "Installing playwright APT dependencies" | indent 2
 
 readarray -t APT_PACKAGES < "$CNB_BUILDPACK_DIR/packages/ubuntu-jammy.txt"
 APT_ROOT="$CNB_LAYERS_DIR/playwright/apt"
@@ -94,10 +147,6 @@ echo -n ":" > "$ENV_DIR/CPPPATH.delim"
 
 echo -n "$APT_ROOT/usr/lib/x86_64-linux-gnu/pkgconfig:$APT_ROOT/usr/lib/i386-linux-gnu/pkgconfig:$APT_ROOT/usr/lib/pkgconfig" > "$ENV_DIR/PKG_CONFIG_PATH.prepend"
 echo -n ":" > "$ENV_DIR/PKG_CONFIG_PATH.delim"
-
-echo "  Installing playwright cached dependencies"
-PLAYWRIGHT_BROWSERS_PATH="$CNB_LAYERS_DIR/playwright/dependencies" python -m playwright install  2> /dev/null | indent 4
-echo -n "$CNB_LAYERS_DIR/playwright/dependencies" > "$CNB_LAYERS_DIR/playwright/env/PLAYWRIGHT_BROWSERS_PATH"
 
 echo
 echo "  Configuring build and launch environment"

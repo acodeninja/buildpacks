@@ -3,11 +3,7 @@ api = "0.10"
 [buildpack]
   id = "acodeninja/playwright-python"
   version = "0.1.1"
+
 [[buildpack.licenses]]
   type = "MIT"
   uri = "https://github.com/acodeninja/buildpacks/blob/main/LICENSE"
-
-[[order]]
-[[order.group]]
-  id = "paketo-buildpacks/python"
-  version = "2.16.0"
