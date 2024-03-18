@@ -2,7 +2,7 @@
 
 echo "provides = [{ name = \"playwright\" }]" > "$CNB_BP_PLAN_PATH"
 
-if [[ -f requirements.txt && -n "$(cat requirements.txt | grep '^playwright')" ]]; then
+if [[ "$(find . -name "requirements*" | xargs cat | grep '^playwright')" ]]; then
   echo "requires = [{ name = \"site-packages\"}, { name = \"cpython\"}]" >> "$CNB_BP_PLAN_PATH"
   exit 0
 fi
@@ -17,6 +17,6 @@ if [[ -f poetry.lock && -n "$(cat poetry.lock | grep 'name = "playwright"')" ]];
   exit 0
 fi
 
-echo "python-playwright: no dependency on playwright detected"
+echo "playwright-python: no dependency on playwright detected"
 
 exit 100

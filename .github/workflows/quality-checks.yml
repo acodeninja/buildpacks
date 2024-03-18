@@ -4,9 +4,6 @@ run-name: 🔬 @${{ github.triggering_actor }} is checking quality on ${{ github
 
 on: [push]
 
-env:
-  PACK_VERSION: 0.33.2
-
 jobs:
   test:
     runs-on: ubuntu-latest

@@ -2,18 +2,12 @@ api = "0.10"
 
 [buildpack]
   id = "acodeninja/playwright-python"
-  version = "0.1.0"
+  version = "0.1.1"
 [[buildpack.licenses]]
   type = "MIT"
   uri = "https://github.com/acodeninja/buildpacks/blob/main/LICENSE"
 
-[[dependencies]]
-  uri = "paketo-buildpacks/python"
-
-[[targets]]
-  os = "linux"
-[[targets.distros]]
-  name = "ubuntu"
-
-[[stacks]]
-  id = "io.buildpacks.stacks.jammy"
+[[order]]
+[[order.group]]
+  id = "paketo-buildpacks/python"
+  version = "2.16.0"

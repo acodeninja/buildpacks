@@ -9,7 +9,6 @@ on:
     types: [ completed ]
 
 env:
-  PACK_VERSION: 0.33.2
   REPO: ghcr.io/${{ github.repository_owner }}
 
 jobs:
@@ -72,7 +71,7 @@ jobs:
         run: |
           #!/usr/bin/env bash
           set -euo pipefail
-          pack buildpack package --publish "${{ steps.local-version.outputs.name }}:${{ steps.local-version.outputs.version }}"
+          pack buildpack package --publish "${{ steps.local-version.outputs.name }}:${{ steps.local-version.outputs.version }}" --config package.toml
           DIGEST="$(crane digest ${{ steps.local-version.outputs.name }}:${{ steps.local-version.outputs.version }})"
           echo "address=${{ steps.local-version.outputs.name }}@${DIGEST}" >> "$GITHUB_OUTPUT"
         working-directory: ${{ matrix.buildpack }}
