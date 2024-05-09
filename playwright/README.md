@@ -1,0 +1,1 @@
+# Playwright Cloud Native Buildpack
