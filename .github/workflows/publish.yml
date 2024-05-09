@@ -55,13 +55,17 @@ jobs:
           retries: 3
           retry-exempt-status-codes: 400,401
           script: |
-            return await github.rest.packages
-              .getAllPackageVersionsForPackageOwnedByUser({
-                package_type: "container", 
-                username: "${{ github.repository_owner }}",
-                package_name: "${{ steps.local-version.outputs.name }}".replace(`${process.env.REPO}/`, ""),
-              })
-              .then(r => r.data[0].metadata.container.tags[0]);
+            try {
+              return await github.rest.packages
+                .getAllPackageVersionsForPackageOwnedByUser({
+                  package_type: "container", 
+                  username: "${{ github.repository_owner }}",
+                  package_name: "${{ steps.local-version.outputs.name }}".replace(`${process.env.REPO}/`, ""),
+                })
+                .then(r => r.data[0].metadata.container.tags[0]);
+            } catch (e) {
+              return "0.0.0"
+            }
       - name: login to ghcr
         if: steps.local-version.outputs.version > steps.published-version.outputs.result
         run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.repository_owner }} --password-stdin
