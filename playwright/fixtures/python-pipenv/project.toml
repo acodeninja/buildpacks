@@ -10,4 +10,4 @@ builder = "paketobuildpacks/builder-jammy-base"
 uri = "paketo-buildpacks/python"
 
 [[io.buildpacks.group]]
-uri = "../"
+uri = "../../"
