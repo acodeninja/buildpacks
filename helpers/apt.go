@@ -16,7 +16,7 @@ import (
 func InstallAptPackages(layer libcnb.Layer, packageList []string, logger bard.Logger) error {
 	var err error
 
-	logger.Headerf("Installing APT packages in %s", layer.Path)
+	logger.Headerf("Installing APT packages in %s layer", layer.Name)
 
 	aptFolder := layer.Path
 	aptCacheDirectory := filepath.Join(aptFolder, "cache")
@@ -25,6 +25,8 @@ func InstallAptPackages(layer libcnb.Layer, packageList []string, logger bard.Lo
 	aptArchiveDirectory := filepath.Join(aptFolder, "archives")
 	aptListsDirectory := filepath.Join(aptFolder, "lists")
 
+	logger.Headerf("  Creating APT directories")
+
 	_, err = os.Stat(aptFolder)
 
 	if errors.Is(err, os.ErrNotExist) {
@@ -32,7 +34,7 @@ func InstallAptPackages(layer libcnb.Layer, packageList []string, logger bard.Lo
 		if err != nil {
 			return err
 		}
-		logger.Body("Created", aptFolder)
+		logger.Body("  Created", aptFolder)
 	}
 
 	aptDirectories := []string{
@@ -48,7 +50,7 @@ func InstallAptPackages(layer libcnb.Layer, packageList []string, logger bard.Lo
 		if err != nil {
 			return err
 		}
-		logger.Body("Created", directory)
+		logger.Body("  Created", directory)
 	}
 
 	err = CopyFile("/etc/apt/sources.list", fmt.Sprintf("%s/sources.list", aptSourcesDirectory))
@@ -56,9 +58,9 @@ func InstallAptPackages(layer libcnb.Layer, packageList []string, logger bard.Lo
 		return err
 	}
 
-	logger.Header("Updating APT sources")
+	logger.Header("  Updating APT sources")
 	err = aptUpdate(
-		IndentedWriterFactory(0, logger),
+		IndentedWriterFactory(2, logger),
 		aptCacheDirectory,
 		aptStateDirectory,
 		aptSourcesDirectory,
@@ -67,9 +69,9 @@ func InstallAptPackages(layer libcnb.Layer, packageList []string, logger bard.Lo
 		return err
 	}
 
-	logger.Header("Downloading APT packages")
+	logger.Header("  Downloading APT packages")
 	err = aptDownload(
-		IndentedWriterFactory(0, logger),
+		IndentedWriterFactory(2, logger),
 		aptCacheDirectory,
 		aptStateDirectory,
 		aptSourcesDirectory,
@@ -79,11 +81,10 @@ func InstallAptPackages(layer libcnb.Layer, packageList []string, logger bard.Lo
 		return err
 	}
 
-	logger.Header("Installing APT packages")
-	err = dpkgInstall(IndentedWriterFactory(0, logger), aptCacheDirectory, aptFolder)
+	logger.Header("  Installing APT packages")
+	err = dpkgInstall(IndentedWriterFactory(2, logger), aptCacheDirectory, aptFolder)
 
-	logger.Header("Injecting Environment")
-	layer.SharedEnvironment.Prependf("PATH", ":", "%s/usr/bin", aptFolder)
+	layer.SharedEnvironment.Prependf("PATH", ":", "%s/usr/bin:%s/bin", aptFolder, aptFolder)
 
 	libPath := fmt.Sprintf("%s/lib/x86_64-linux-gnu:%s/lib/i386-linux-gnu:%s/lib:%s/usr/lib/x86_64-linux-gnu:%s/usr/lib/i386-linux-gnu:%s/usr/lib", aptFolder, aptFolder, aptFolder, aptFolder, aptFolder, aptFolder)
 	layer.SharedEnvironment.Prepend("LD_LIBRARY_PATH", ":", libPath)

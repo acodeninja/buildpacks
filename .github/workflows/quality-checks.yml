@@ -22,3 +22,19 @@ jobs:
         uses: buildpacks/github-actions/setup-pack@v5.1.0
       - run: make test-${{ matrix.package-manager }}
         working-directory: playwright/
+
+  test-python-security:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        package-manager:
+          - python-pip
+    steps:
+      - uses: actions/checkout@v4
+      - id: setup-tools
+        uses: buildpacks/github-actions/setup-tools@v5.1.0
+      - id: setup-pack
+        uses: buildpacks/github-actions/setup-pack@v5.1.0
+      - run: make test-${{ matrix.package-manager }}
+        working-directory: python-security/
