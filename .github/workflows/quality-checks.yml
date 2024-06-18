@@ -30,6 +30,7 @@ jobs:
       matrix:
         package-manager:
           - python-pip
+          - python-pipenv
     steps:
       - uses: actions/checkout@v4
       - id: setup-tools
