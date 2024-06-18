@@ -13,6 +13,7 @@ env:
 
 jobs:
   enumerate-buildpacks:
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     outputs:
       buildpacks: ${{ steps.buildpacks.outputs.list }}

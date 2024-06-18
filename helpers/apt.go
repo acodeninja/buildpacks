@@ -94,6 +94,12 @@ func InstallAptPackages(layer libcnb.Layer, packageList []string, logger bard.Lo
 	layer.SharedEnvironment.Prepend("INCLUDE_PATH", ":", includePath)
 	layer.SharedEnvironment.Prepend("CPATH", ":", includePath)
 	layer.SharedEnvironment.Prepend("CPPPATH", ":", includePath)
+
+	//err = os.WriteFile(path.Join(layer.Path, "InstalledPackages"), []byte(strings.Join(packageList, "\n")), os.FileMode(0777))
+	//if err != nil {
+	//	return err
+	//}
+
 	return nil
 }
 
@@ -183,7 +189,16 @@ func NewAptLayer(packages []string, name string, logger bard.Logger, cache bool)
 }
 
 func (apt AptLayer) Contribute(layer libcnb.Layer) (libcnb.Layer, error) {
+	apt.LayerContributor.Logger = apt.Logger
+	apt.LayerContributor.ExpectedMetadata = map[string]interface{}{
+		"packages": apt.Packages,
+	}
+
 	return apt.LayerContributor.Contribute(layer, func() (libcnb.Layer, error) {
+		if layer.Metadata == nil {
+			layer.Metadata = map[string]interface{}{}
+		}
+		layer.Metadata["packages"] = apt.Packages
 
 		err := InstallAptPackages(layer, apt.Packages, apt.Logger)
 
