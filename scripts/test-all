@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+
+for D in python-security playwright; do
+  echo "---> Testing $D"
+  cd $D || exit 1
+  make test
+  cd ..
+done
