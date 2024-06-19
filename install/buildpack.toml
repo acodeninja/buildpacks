@@ -1,0 +1,26 @@
+api = "0.8"
+
+[buildpack]
+    id = "acodeninja/install"
+    name = "ACodeNinja Buildpack for installing system packages"
+    version = "0.0.1"
+    homepage = "https://github.com/acodeninja/buildpacks/install"
+
+    [[buildpack.licenses]]
+        type = "MIT"
+        uri = "https://github.com/acodeninja/buildpacks/blob/main/LICENSE"
+
+[[targets]]
+    os = "linux"
+    [[targets.distros]]
+        name = "ubuntu"
+
+[metadata]
+    include-files = ["bin/detect", "bin/build", "buildpack.toml"]
+    [[metadata.dependencies]]
+        stacks = ["io.buildpacks.stacks.jammy"]
+    [[metadata.dependencies]]
+        stacks = ["io.buildpacks.stacks.bionic"]
+
+[[stacks]]
+    id = "*"
