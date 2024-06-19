@@ -39,3 +39,19 @@ jobs:
         uses: buildpacks/github-actions/setup-pack@v5.1.0
       - run: make test-${{ matrix.package-manager }}
         working-directory: python-security/
+
+  test-install:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        package-manager:
+          - apt
+    steps:
+      - uses: actions/checkout@v4
+      - id: setup-tools
+        uses: buildpacks/github-actions/setup-tools@v5.1.0
+      - id: setup-pack
+        uses: buildpacks/github-actions/setup-pack@v5.1.0
+      - run: make test-${{ matrix.package-manager }}
+        working-directory: install/
