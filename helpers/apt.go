@@ -95,11 +95,6 @@ func InstallAptPackages(layer libcnb.Layer, packageList []string, logger bard.Lo
 	layer.SharedEnvironment.Prepend("CPATH", ":", includePath)
 	layer.SharedEnvironment.Prepend("CPPPATH", ":", includePath)
 
-	//err = os.WriteFile(path.Join(layer.Path, "InstalledPackages"), []byte(strings.Join(packageList, "\n")), os.FileMode(0777))
-	//if err != nil {
-	//	return err
-	//}
-
 	return nil
 }
 
