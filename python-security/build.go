@@ -18,10 +18,12 @@ func (b Build) Build(context libcnb.BuildContext) (libcnb.BuildResult, error) {
 	result := libcnb.NewBuildResult()
 
 	result.Layers = append(result.Layers, helpers.NewAptLayer([]string{
-		"pkg-config",
 		"libxml2-dev",
+		"libxmlsec1",
 		"libxmlsec1-dev",
 		"libxmlsec1-openssl",
+		"pkg-config",
+		"xmlsec1",
 	}, "apt", b.Logger, true))
 
 	return result, err
