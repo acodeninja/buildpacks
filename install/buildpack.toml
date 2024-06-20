@@ -3,8 +3,8 @@ api = "0.8"
 [buildpack]
     id = "acodeninja/install"
     name = "ACodeNinja Buildpack for installing system packages"
-    version = "0.0.1"
-    homepage = "https://github.com/acodeninja/buildpacks/install"
+    version = "0.0.2"
+    homepage = "https://github.com/acodeninja/buildpacks/tree/main/install"
 
     [[buildpack.licenses]]
         type = "MIT"
