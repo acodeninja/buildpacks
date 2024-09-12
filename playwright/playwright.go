@@ -14,17 +14,17 @@ import (
 
 type PlaywrightLayer struct {
 	LayerName          string
-	AptLayer           libcnb.Layer
+	TemporaryLayer     libcnb.Layer
 	LayerContributor   libpak.LayerContributor
 	Logger             bard.Logger
 	PlaywrightVersion  string
 	PlaywrightLanguage string
 }
 
-func NewPlaywrightLayer(playwrightVersion string, playwrightLanguage string, aptLayer libcnb.Layer, logger bard.Logger) *PlaywrightLayer {
+func NewPlaywrightLayer(playwrightVersion string, playwrightLanguage string, tempLayer libcnb.Layer, logger bard.Logger) *PlaywrightLayer {
 	return &PlaywrightLayer{
-		AptLayer:  aptLayer,
-		LayerName: fmt.Sprintf("playwright-%s", playwrightLanguage),
+		TemporaryLayer: tempLayer,
+		LayerName:      fmt.Sprintf("playwright-%s", playwrightLanguage),
 		LayerContributor: libpak.NewLayerContributor(
 			fmt.Sprintf("playwright-%s", playwrightLanguage),
 			map[string]interface{}{
@@ -55,16 +55,25 @@ func (playwright PlaywrightLayer) Contribute(layer libcnb.Layer) (libcnb.Layer, 
 
 		var err error
 
-		if playwright.PlaywrightLanguage == "python" {
-			err = helpers.InstallAptPackages(playwright.AptLayer, []string{"python3", "python3-pip"}, playwright.Logger)
+		switch playwright.PlaywrightLanguage {
+		case "python":
+			err = helpers.InstallAptPackages(playwright.TemporaryLayer, []string{"python3-distutils", "python3-full", "python3-pip"}, playwright.Logger, true)
 
-			playwright.Logger.Header("Installing playwright python")
-			err = helpers.RunCommand(
+			playwright.Logger.Headerf("Installing playwright version %s", playwright.PlaywrightVersion)
+
+			installPlaywright := helpers.GetCommand(
 				helpers.IndentedWriterFactory(0, playwright.Logger),
-				"pip3",
+				fmt.Sprintf("%s/usr/bin/python3", playwright.TemporaryLayer.Path),
+				"-m",
+				"pip",
 				"install",
 				fmt.Sprintf("playwright==%s", playwright.PlaywrightVersion),
 			)
+
+			helpers.InjectLayerEnvironment(installPlaywright, playwright.TemporaryLayer.BuildEnvironment)
+
+			err = installPlaywright.Run()
+
 			if err != nil {
 				return layer, err
 			}
@@ -72,6 +81,8 @@ func (playwright PlaywrightLayer) Contribute(layer libcnb.Layer) (libcnb.Layer, 
 			playwright.Logger.Header("Installing playwright dependencies")
 			playwrightInstall := helpers.GetCommand(
 				helpers.IndentedWriterFactory(0, playwright.Logger),
+				fmt.Sprintf("%s/usr/bin/python3", playwright.TemporaryLayer.Path),
+				"-m",
 				"playwright",
 				"install",
 			)
@@ -79,10 +90,13 @@ func (playwright PlaywrightLayer) Contribute(layer libcnb.Layer) (libcnb.Layer, 
 				os.Environ(),
 				fmt.Sprintf("PLAYWRIGHT_BROWSERS_PATH=%s", layer.Path),
 			)
+			helpers.InjectLayerEnvironment(playwrightInstall, playwright.TemporaryLayer.BuildEnvironment)
 			err = playwrightInstall.Run()
 
 			playwright.Logger.Header("Injecting Environment")
 			layer.SharedEnvironment.Prependf("PLAYWRIGHT_BROWSERS_PATH", ":", layer.Path)
+		default:
+			return layer, fmt.Errorf("%s is not a supported playwright language", playwright.PlaywrightLanguage)
 		}
 
 		layer.LayerTypes.Build = true
