@@ -27,13 +27,11 @@ func (b Build) Build(context libcnb.BuildContext) (libcnb.BuildResult, error) {
 		case "playwright":
 			version := entry.Metadata["playwright-version"]
 			language := entry.Metadata["playwright-language"]
-			result.Layers = append(result.Layers, helpers.NewAptLayer(UbuntuPackages, "dependencies", b.Logger, true))
-
-			temporaryLayer, err := context.Layers.Layer("playwright")
+			temporaryLayer, err := context.Layers.Layer("temporary")
 			if err != nil {
 				return result, err
 			}
-
+			result.Layers = append(result.Layers, helpers.NewAptLayer(UbuntuPackages, "dependencies", b.Logger, true))
 			result.Layers = append(result.Layers, NewPlaywrightLayer(version.(string), language.(string), temporaryLayer, b.Logger))
 		default:
 			return libcnb.BuildResult{}, fmt.Errorf("received unexpected buildpack plan entry %q", entry.Name)
