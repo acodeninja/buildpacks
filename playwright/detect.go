@@ -1,7 +1,6 @@
 package main
 
 import (
-	"github.com/acodeninja/buildpacks/helpers"
 	"github.com/buildpacks/libcnb"
 	"github.com/paketo-buildpacks/libpak/bard"
 )
@@ -13,28 +12,21 @@ type Detect struct {
 func (d Detect) Detect(context libcnb.DetectContext) (libcnb.DetectResult, error) {
 	d.Logger.Title(context.Buildpack)
 
-	playwrightVersion := ResolvePlaywrightVersion(d.Logger)
-
-	pythonDependencyRequires := "site-packages"
-
-	if helpers.DetectInFile("/workspace/poetry.lock", "\"playwright\"", d.Logger) {
-		pythonDependencyRequires = "poetry-venv"
-	}
+	playwrightVersion, playwrightLanguage := ResolvePlaywrightVersion(d.Logger)
 
 	return libcnb.DetectResult{
 		Pass: true,
 		Plans: []libcnb.BuildPlan{
 			{
 				Provides: []libcnb.BuildPlanProvide{
-					{Name: "playwright-python"},
+					{Name: "playwright"},
 				},
 				Requires: []libcnb.BuildPlanRequire{
-					{Name: "cpython"},
-					{Name: pythonDependencyRequires},
 					{
-						Name: "playwright-python",
+						Name: "playwright",
 						Metadata: map[string]interface{}{
-							"playwright-python-version": playwrightVersion,
+							"playwright-version":  playwrightVersion,
+							"playwright-language": playwrightLanguage,
 						},
 					},
 				},

@@ -13,72 +13,78 @@ import (
 )
 
 type PlaywrightLayer struct {
-	LayerName         string
-	AptLayer          libcnb.Layer
-	LayerContributor  libpak.LayerContributor
-	Logger            bard.Logger
-	PlaywrightVersion string
+	LayerName          string
+	AptLayer           libcnb.Layer
+	LayerContributor   libpak.LayerContributor
+	Logger             bard.Logger
+	PlaywrightVersion  string
+	PlaywrightLanguage string
 }
 
-func NewPlaywrightLayer(playwrightVersion string, aptLayer libcnb.Layer, logger bard.Logger) *PlaywrightLayer {
+func NewPlaywrightLayer(playwrightVersion string, playwrightLanguage string, aptLayer libcnb.Layer, logger bard.Logger) *PlaywrightLayer {
 	return &PlaywrightLayer{
 		AptLayer:  aptLayer,
-		LayerName: "playwright",
+		LayerName: fmt.Sprintf("playwright-%s", playwrightLanguage),
 		LayerContributor: libpak.NewLayerContributor(
-			"playwright",
-			map[string]interface{}{},
+			fmt.Sprintf("playwright-%s", playwrightLanguage),
+			map[string]interface{}{
+				"playwright-version":  playwrightVersion,
+				"playwright-language": playwrightLanguage,
+			},
 			libcnb.LayerTypes{
 				Build:  true,
 				Launch: true,
 				Cache:  true,
 			},
 		),
-		Logger:            logger,
-		PlaywrightVersion: playwrightVersion,
+		Logger:             logger,
+		PlaywrightVersion:  playwrightVersion,
+		PlaywrightLanguage: playwrightLanguage,
 	}
 }
 
 func (playwright PlaywrightLayer) Contribute(layer libcnb.Layer) (libcnb.Layer, error) {
 	playwright.LayerContributor.Logger = playwright.Logger
-	playwright.LayerContributor.ExpectedMetadata = map[string]interface{}{
-		"playwright-python-version": playwright.PlaywrightVersion,
-	}
 
 	return playwright.LayerContributor.Contribute(layer, func() (libcnb.Layer, error) {
 		if layer.Metadata == nil {
 			layer.Metadata = map[string]interface{}{}
 		}
-		layer.Metadata["playwright-python-version"] = playwright.PlaywrightVersion
+		layer.Metadata["playwright-version"] = playwright.PlaywrightVersion
+		layer.Metadata["playwright-language"] = playwright.PlaywrightLanguage
 
 		var err error
 
-		err = helpers.InstallAptPackages(playwright.AptLayer, []string{"python3", "python3-pip"}, playwright.Logger)
+		if playwright.PlaywrightLanguage == "python" {
+			err = helpers.InstallAptPackages(playwright.AptLayer, []string{"python3", "python3-pip"}, playwright.Logger)
 
-		playwrightVersion := ResolvePlaywrightVersion(playwright.Logger)
+			playwright.Logger.Header("Installing playwright python")
+			err = helpers.RunCommand(
+				helpers.IndentedWriterFactory(0, playwright.Logger),
+				"pip3",
+				"install",
+				fmt.Sprintf("playwright==%s", playwright.PlaywrightVersion),
+			)
+			if err != nil {
+				return layer, err
+			}
 
-		err = helpers.RunCommand(
-			helpers.IndentedWriterFactory(4, playwright.Logger),
-			"pip3",
-			"install",
-			fmt.Sprintf("playwright==%s", playwrightVersion),
-		)
-		if err != nil {
-			return layer, err
+			playwright.Logger.Header("Installing playwright dependencies")
+			playwrightInstall := helpers.GetCommand(
+				helpers.IndentedWriterFactory(0, playwright.Logger),
+				"playwright",
+				"install",
+			)
+			playwrightInstall.Env = append(
+				os.Environ(),
+				fmt.Sprintf("PLAYWRIGHT_BROWSERS_PATH=%s", layer.Path),
+			)
+			err = playwrightInstall.Run()
+
+			playwright.Logger.Header("Injecting Environment")
+			layer.SharedEnvironment.Prependf("PLAYWRIGHT_BROWSERS_PATH", ":", layer.Path)
 		}
 
-		playwrightInstall := helpers.GetCommand(
-			helpers.IndentedWriterFactory(4, playwright.Logger),
-			"playwright",
-			"install",
-		)
-		playwrightInstall.Env = append(
-			os.Environ(),
-			fmt.Sprintf("PLAYWRIGHT_BROWSERS_PATH=%s", layer.Path),
-		)
-		err = playwrightInstall.Run()
-
-		playwright.Logger.Header("Injecting Environment")
-		layer.SharedEnvironment.Prependf("PLAYWRIGHT_BROWSERS_PATH", ":", layer.Path)
 		layer.LayerTypes.Build = true
 		layer.LayerTypes.Launch = true
 		layer.LayerTypes.Cache = true
@@ -91,8 +97,9 @@ func (playwright PlaywrightLayer) Name() string {
 	return "playwright"
 }
 
-func ResolvePlaywrightVersion(logger bard.Logger) string {
+func ResolvePlaywrightVersion(logger bard.Logger) (string, string) {
 	playwrightVersion := "1.43.0"
+	playwrightLanguage := "python"
 	resolved := false
 
 	logger.Header("Resolving playwright version")
@@ -170,5 +177,5 @@ func ResolvePlaywrightVersion(logger bard.Logger) string {
 		}
 	}
 
-	return playwrightVersion
+	return playwrightVersion, playwrightLanguage
 }
