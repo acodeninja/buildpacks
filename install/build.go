@@ -27,7 +27,7 @@ func (b Build) Build(context libcnb.BuildContext) (libcnb.BuildResult, error) {
 		case PlanEntryAptInstall:
 			packages, err := packagesFromPlanEntryMetadata(entry)
 			if err != nil {
-				return libcnb.BuildResult{}, fmt.Errorf("failed to decode CA certificate paths from plan entry:\n%w", err)
+				return libcnb.BuildResult{}, fmt.Errorf("failed to resolve packages from plan metadata:\n%w", err)
 			}
 
 			result.Layers = append(result.Layers, helpers.NewAptLayer(packages, "apt-install", b.Logger, true))

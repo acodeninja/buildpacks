@@ -13,13 +13,14 @@ import (
 )
 
 type PlaywrightLayer struct {
-	LayerName        string
-	AptLayer         libcnb.Layer
-	LayerContributor libpak.LayerContributor
-	Logger           bard.Logger
+	LayerName         string
+	AptLayer          libcnb.Layer
+	LayerContributor  libpak.LayerContributor
+	Logger            bard.Logger
+	PlaywrightVersion string
 }
 
-func NewPlaywrightLayer(aptLayer libcnb.Layer) *PlaywrightLayer {
+func NewPlaywrightLayer(playwrightVersion string, aptLayer libcnb.Layer, logger bard.Logger) *PlaywrightLayer {
 	return &PlaywrightLayer{
 		AptLayer:  aptLayer,
 		LayerName: "playwright",
@@ -29,15 +30,26 @@ func NewPlaywrightLayer(aptLayer libcnb.Layer) *PlaywrightLayer {
 			libcnb.LayerTypes{
 				Build:  true,
 				Launch: true,
-				Cache:  false,
+				Cache:  true,
 			},
 		),
-		Logger: bard.Logger{},
+		Logger:            logger,
+		PlaywrightVersion: playwrightVersion,
 	}
 }
 
 func (playwright PlaywrightLayer) Contribute(layer libcnb.Layer) (libcnb.Layer, error) {
+	playwright.LayerContributor.Logger = playwright.Logger
+	playwright.LayerContributor.ExpectedMetadata = map[string]interface{}{
+		"playwright-python-version": playwright.PlaywrightVersion,
+	}
+
 	return playwright.LayerContributor.Contribute(layer, func() (libcnb.Layer, error) {
+		if layer.Metadata == nil {
+			layer.Metadata = map[string]interface{}{}
+		}
+		layer.Metadata["playwright-python-version"] = playwright.PlaywrightVersion
+
 		var err error
 
 		err = helpers.InstallAptPackages(playwright.AptLayer, []string{"python3", "python3-pip"}, playwright.Logger)
@@ -93,62 +105,64 @@ func ResolvePlaywrightVersion(logger bard.Logger) string {
 	if err == nil {
 		for _, file := range files {
 			match := requirementsPattern.MatchString(file.Name())
-			if match {
+			if match && !resolved {
 				logger.Bodyf("Checking %s", file.Name())
 				contents, err := os.ReadFile(file.Name())
 				if err == nil {
 					playwrightVersionMatches := requirementsPatternVersion.FindStringSubmatch(string(contents))
-					playwrightVersion = playwrightVersionMatches[len(playwrightVersionMatches)-1]
-					resolved = true
-					logger.Bodyf("Found playwright version %s in %s", playwrightVersion, file.Name())
+					if len(playwrightVersionMatches) == 2 {
+						playwrightVersion = playwrightVersionMatches[len(playwrightVersionMatches)-1]
+						resolved = true
+						logger.Bodyf("Found playwright version %s in %s", playwrightVersion, file.Name())
+					}
 				}
 			}
 		}
-	}
 
-	// Find in Pipfile
-	if !resolved {
-		var pipFile map[string]interface{}
-		_, err = os.Stat("/workspace/Pipfile.lock")
-		if err == nil {
-			pipFileContents, err := os.ReadFile("/workspace/Pipfile.lock")
-
-			logger.Body("Checking /workspace/Pipfile.lock")
-
+		// Find in Pipfile
+		if !resolved {
+			var pipFile map[string]interface{}
+			_, err = os.Stat("/workspace/Pipfile.lock")
 			if err == nil {
-				err = json.Unmarshal(pipFileContents, &pipFile)
-				if err == nil {
-					foundPipfileVersion := pipFile["default"].(map[string]interface{})["playwright"].(map[string]interface{})["version"].(string)
-					versionPattern := regexp.MustCompile("([0-9.]+)")
+				pipFileContents, err := os.ReadFile("/workspace/Pipfile.lock")
 
-					matches := versionPattern.FindStringSubmatch(foundPipfileVersion)
-					playwrightVersion = matches[1]
-					resolved = true
-					logger.Bodyf("Found playwright version %s in /workspace/Pipfile.lock", playwrightVersion)
+				logger.Body("Checking /workspace/Pipfile.lock")
+
+				if err == nil {
+					err = json.Unmarshal(pipFileContents, &pipFile)
+					if err == nil {
+						foundPipfileVersion := pipFile["default"].(map[string]interface{})["playwright"].(map[string]interface{})["version"].(string)
+						versionPattern := regexp.MustCompile("([0-9.]+)")
+
+						matches := versionPattern.FindStringSubmatch(foundPipfileVersion)
+						playwrightVersion = matches[1]
+						resolved = true
+						logger.Bodyf("Found playwright version %s in /workspace/Pipfile.lock", playwrightVersion)
+					}
 				}
 			}
 		}
-	}
 
-	// Find in Poetry.lock
-	if !resolved {
-		var poetryFile map[string]interface{}
-		_, err = os.Stat("/workspace/poetry.lock")
-		if err == nil {
-			poetryFileContents, err := os.ReadFile("/workspace/poetry.lock")
-
-			logger.Body("Checking /workspace/poetry.lock")
-
+		// Find in Poetry.lock
+		if !resolved {
+			var poetryFile map[string]interface{}
+			_, err = os.Stat("/workspace/poetry.lock")
 			if err == nil {
-				err = toml.Unmarshal(poetryFileContents, &poetryFile)
+				poetryFileContents, err := os.ReadFile("/workspace/poetry.lock")
+
+				logger.Body("Checking /workspace/poetry.lock")
+
 				if err == nil {
-					for _, p := range poetryFile["package"].([]map[string]interface{}) {
-						if p["name"] == "playwright" {
-							versionPattern := regexp.MustCompile("([0-9.]+)")
-							matches := versionPattern.FindStringSubmatch(p["version"].(string))
-							playwrightVersion = matches[1]
-							resolved = true
-							logger.Bodyf("Found playwright version %s in /workspace/poetry.lock", playwrightVersion)
+					err = toml.Unmarshal(poetryFileContents, &poetryFile)
+					if err == nil {
+						for _, p := range poetryFile["package"].([]map[string]interface{}) {
+							if p["name"] == "playwright" {
+								versionPattern := regexp.MustCompile("([0-9.]+)")
+								matches := versionPattern.FindStringSubmatch(p["version"].(string))
+								playwrightVersion = matches[1]
+								resolved = true
+								logger.Bodyf("Found playwright version %s in /workspace/poetry.lock", playwrightVersion)
+							}
 						}
 					}
 				}
