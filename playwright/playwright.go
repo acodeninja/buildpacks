@@ -99,7 +99,7 @@ func ResolvePlaywrightVersion(logger bard.Logger) string {
 
 	// Find in requirements.txt
 	requirementsPattern := regexp.MustCompile("^requirement.+\\.txt")
-	requirementsPatternVersion := regexp.MustCompile("playwright[^0-9]+([0-9.]+)")
+	requirementsPatternVersion := regexp.MustCompile("playwright[^0-9\n]+([0-9.]+)")
 
 	files, err := os.ReadDir("/workspace")
 	if err == nil {

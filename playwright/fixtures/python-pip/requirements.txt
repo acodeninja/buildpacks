@@ -1,3 +1,5 @@
 pytest
-playwright==1.42.0
 pytest-playwright
+    #   playwright
+boto3==1.35.17
+playwright==1.45.0
