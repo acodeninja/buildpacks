@@ -1,4 +1,4 @@
-package helpers
+package common
 
 import (
 	"github.com/paketo-buildpacks/libpak/bard"

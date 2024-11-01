@@ -5,53 +5,55 @@ run-name: 🔬 @${{ github.triggering_actor }} is checking quality on ${{ github
 on: [push]
 
 jobs:
-  test-playwright:
+  enumerate-buildpack-tests:
+    name: 🔎 enumerate buildpack tests
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        package-manager:
-          - python-pip
-          - python-pipenv
-          - python-poetry
+    outputs:
+      tests: ${{ steps.buildpack-tests.outputs.result }}
     steps:
       - uses: actions/checkout@v4
-      - id: setup-tools
-        uses: buildpacks/github-actions/setup-tools@v5.1.0
-      - id: setup-pack
-        uses: buildpacks/github-actions/setup-pack@v5.1.0
-      - run: make test-${{ matrix.package-manager }}
-        working-directory: playwright/
+      - uses: actions/github-script@v7
+        id: buildpack-tests
+        with:
+          result-encoding: json
+          script: |
+            const {readdir, stat, readFile} = require("node:fs/promises");
+            const {join, relative} = require("node:path");
+            
+            return await readdir(process.cwd())
+              .then(dirs => Promise.all(dirs.map(async d => {
+                try {
+                  await stat(join(process.cwd(), d, 'buildpack.toml'));
+                  return relative(process.cwd(), join(process.cwd(), d));
+                } catch (e) {
+                  return null;
+                }
+              })))
+              .then(dirs => dirs.filter(d => Boolean(d)))
+              .then(dirs => Promise.all(dirs.map(async d => {
+                const makefile = (await readFile(join(process.cwd(), d, 'Makefile'))).toString();
+                return makefile.match(/^test-[^:]+/mg)?.map(t => `${d}:${t}`);
+              })))
+              .then(dirs => dirs.flat())
+              .then(dirs => dirs.filter(d => Boolean(d)));
 
-  test-python-security:
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        package-manager:
-          - python-pip
-          - python-pipenv
-    steps:
-      - uses: actions/checkout@v4
-      - id: setup-tools
-        uses: buildpacks/github-actions/setup-tools@v5.1.0
-      - id: setup-pack
-        uses: buildpacks/github-actions/setup-pack@v5.1.0
-      - run: make test-${{ matrix.package-manager }}
-        working-directory: python-security/
-
-  test-install:
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        package-manager:
-          - apt
-    steps:
-      - uses: actions/checkout@v4
-      - id: setup-tools
-        uses: buildpacks/github-actions/setup-tools@v5.1.0
-      - id: setup-pack
-        uses: buildpacks/github-actions/setup-pack@v5.1.0
-      - run: make test-${{ matrix.package-manager }}
-        working-directory: install/
+  integration-tests:
+      name: ⚙️ integration test ${{ matrix.buildpack-test }}
+      needs: [ enumerate-buildpack-tests ]
+      runs-on: ubuntu-latest
+      strategy:
+        fail-fast: false
+        matrix:
+          buildpack-test: ${{ fromJSON(needs.enumerate-buildpack-tests.outputs.tests) }}
+      steps:
+        - uses: actions/checkout@v4
+        - id: setup-tools
+          uses: buildpacks/github-actions/setup-tools@v5.1.0
+        - id: setup-pack
+          uses: buildpacks/github-actions/setup-pack@v5.1.0
+        - run: |
+            BUILDPACK="$(cut -d':' -f1 <<< "${{ matrix.buildpack-test }}")"
+            TEST_NAME="$(cut -d':' -f2 <<< "${{ matrix.buildpack-test }}")"
+            echo "Testing buildpack $BUILDPACK with $TEST_NAME"
+            cd $BUILDPACK || exit 1
+            make $TEST_NAME

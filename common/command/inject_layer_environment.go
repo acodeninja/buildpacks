@@ -1,25 +1,13 @@
-package helpers
+package command
 
 import (
 	"fmt"
 	"github.com/buildpacks/libcnb"
-	"io"
 	"os"
 	"os/exec"
 	"slices"
 	"strings"
 )
-
-func GetCommand(writer io.Writer, name string, arguments ...string) *exec.Cmd {
-	cmd := exec.Command(name, arguments...)
-	cmd.Stdout = writer
-	cmd.Stderr = writer
-	return cmd
-}
-
-func RunCommand(writer io.Writer, name string, arguments ...string) error {
-	return GetCommand(writer, name, arguments...).Run()
-}
 
 func InjectLayerEnvironment(command *exec.Cmd, environment libcnb.Environment) {
 	command.Env = append(command.Env, os.Environ()...)

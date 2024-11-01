@@ -1,16 +1,16 @@
-package helpers
+package apt
 
 import (
 	"errors"
 	"fmt"
+	"github.com/acodeninja/buildpacks/common"
+	"github.com/acodeninja/buildpacks/common/command"
 	"github.com/buildpacks/libcnb"
-	"github.com/paketo-buildpacks/libpak"
 	"github.com/paketo-buildpacks/libpak/bard"
 	"io"
 	"os"
 	"path/filepath"
 	"slices"
-	"strings"
 )
 
 func InstallAptPackages(layer libcnb.Layer, packageList []string, logger bard.Logger, buildOnly bool) error {
@@ -53,14 +53,14 @@ func InstallAptPackages(layer libcnb.Layer, packageList []string, logger bard.Lo
 		logger.Body("  Created", directory)
 	}
 
-	err = CopyFile("/etc/apt/sources.list", fmt.Sprintf("%s/sources.list", aptSourcesDirectory))
+	err = common.CopyFile("/etc/apt/sources.list", fmt.Sprintf("%s/sources.list", aptSourcesDirectory))
 	if err != nil {
 		return err
 	}
 
 	logger.Header("  Updating APT sources")
 	err = aptUpdate(
-		IndentedWriterFactory(2, logger),
+		common.IndentedWriterFactory(2, logger),
 		aptCacheDirectory,
 		aptStateDirectory,
 		aptSourcesDirectory,
@@ -71,7 +71,7 @@ func InstallAptPackages(layer libcnb.Layer, packageList []string, logger bard.Lo
 
 	logger.Header("  Downloading APT packages")
 	err = aptDownload(
-		IndentedWriterFactory(2, logger),
+		common.IndentedWriterFactory(2, logger),
 		aptCacheDirectory,
 		aptStateDirectory,
 		aptSourcesDirectory,
@@ -82,7 +82,7 @@ func InstallAptPackages(layer libcnb.Layer, packageList []string, logger bard.Lo
 	}
 
 	logger.Header("  Installing APT packages")
-	err = dpkgInstall(IndentedWriterFactory(2, logger), aptCacheDirectory, aptFolder)
+	err = dpkgInstall(common.IndentedWriterFactory(2, logger), aptCacheDirectory, aptFolder)
 
 	if buildOnly {
 		layer.BuildEnvironment.Prependf("PATH", ":", "%s/usr/bin:%s/bin", aptFolder, aptFolder)
@@ -112,7 +112,7 @@ func InstallAptPackages(layer libcnb.Layer, packageList []string, logger bard.Lo
 }
 
 func aptUpdate(writer io.Writer, aptCacheDirectory, aptStateDirectory, aptSourcesDirectory string) error {
-	return RunCommand(
+	return command.Run(
 		writer,
 		"apt-get",
 		"-o", "debug::nolocking=true",
@@ -140,80 +140,5 @@ func aptDownload(writer io.Writer, aptCacheDirectory, aptStateDirectory, aptSour
 		"--reinstall",
 	}
 
-	return RunCommand(writer, "apt-get", slices.Concat(args, packages)...)
-}
-
-func dpkgInstall(writer io.Writer, aptCacheDirectory, aptRootDirectory string) error {
-	aptArchives := fmt.Sprintf("%s/archives/", aptCacheDirectory)
-	files, err := os.ReadDir(aptArchives)
-	if err != nil {
-		return err
-	}
-
-	for _, file := range files {
-		if strings.HasSuffix(file.Name(), ".deb") {
-			_, err := writer.Write([]byte(fmt.Sprintf("Installing %s", file.Name())))
-			if err != nil {
-				return err
-			}
-			err = RunCommand(
-				writer,
-				"dpkg",
-				"-x",
-				fmt.Sprintf("%s/%s", aptArchives, file.Name()),
-				aptRootDirectory,
-			)
-			if err != nil {
-				return err
-			}
-		}
-	}
-
-	return nil
-}
-
-type AptLayer struct {
-	Packages         []string
-	LayerName        string
-	LayerContributor libpak.LayerContributor
-	Logger           bard.Logger
-}
-
-func NewAptLayer(packages []string, name string, logger bard.Logger, cache bool) *AptLayer {
-	return &AptLayer{
-		Packages:  packages,
-		LayerName: name,
-		LayerContributor: libpak.NewLayerContributor(
-			name,
-			map[string]interface{}{},
-			libcnb.LayerTypes{
-				Build:  true,
-				Launch: true,
-				Cache:  cache,
-			},
-		),
-		Logger: logger,
-	}
-}
-
-func (apt AptLayer) Contribute(layer libcnb.Layer) (libcnb.Layer, error) {
-	apt.LayerContributor.Logger = apt.Logger
-	apt.LayerContributor.ExpectedMetadata = map[string]interface{}{
-		"packages": apt.Packages,
-	}
-
-	return apt.LayerContributor.Contribute(layer, func() (libcnb.Layer, error) {
-		if layer.Metadata == nil {
-			layer.Metadata = map[string]interface{}{}
-		}
-		layer.Metadata["packages"] = apt.Packages
-
-		err := InstallAptPackages(layer, apt.Packages, apt.Logger, false)
-
-		return layer, err
-	})
-}
-
-func (apt AptLayer) Name() string {
-	return apt.LayerName
+	return command.Run(writer, "apt-get", slices.Concat(args, packages)...)
 }

@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/acodeninja/buildpacks/helpers"
+	"github.com/acodeninja/buildpacks/common/apt"
 	"github.com/buildpacks/libcnb"
 	"github.com/paketo-buildpacks/libpak/bard"
 )
@@ -17,7 +17,7 @@ func (b Build) Build(context libcnb.BuildContext) (libcnb.BuildResult, error) {
 
 	result := libcnb.NewBuildResult()
 
-	result.Layers = append(result.Layers, helpers.NewAptLayer([]string{
+	result.Layers = append(result.Layers, apt.CreateLayerContributor([]string{
 		"libxml2-dev",
 		"libxmlsec1",
 		"libxmlsec1-dev",

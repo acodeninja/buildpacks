@@ -1,10 +1,10 @@
 api = "0.8"
 
 [buildpack]
-    id = "acodeninja/install"
-    name = "ACodeNinja Buildpack for installing system packages"
+    id = "acodeninja/psql"
+    name = "ACodeNinja Buildpack for PostgreSQL client"
     version = "1.0.0"
-    homepage = "https://github.com/acodeninja/buildpacks/tree/main/install"
+    homepage = "https://github.com/acodeninja/buildpacks/tree/main/psql"
 
     [[buildpack.licenses]]
         type = "MIT"
