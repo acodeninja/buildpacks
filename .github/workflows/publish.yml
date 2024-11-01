@@ -24,8 +24,7 @@ jobs:
 
   publish-buildpack:
     runs-on: ubuntu-latest
-    needs:
-      - enumerate-buildpacks
+    needs: [ enumerate-buildpacks ]
     permissions:
       packages: write
       contents: read
