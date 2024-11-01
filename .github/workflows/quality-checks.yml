@@ -15,6 +15,7 @@ jobs:
           - install
           - playwright
           - python-security
+          - psql
     steps:
       - uses: actions/checkout@v4
       - id: setup-tools
