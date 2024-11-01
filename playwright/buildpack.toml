@@ -3,7 +3,7 @@ api = "0.8"
 [buildpack]
     id = "acodeninja/playwright"
     name = "ACodeNinja Buildpack for Playwright"
-    version = "3.0.0"
+    version = "3.0.1"
     homepage = "https://github.com/acodeninja/buildpacks/tree/main/playwright"
 
     [[buildpack.licenses]]

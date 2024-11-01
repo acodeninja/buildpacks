@@ -5,53 +5,21 @@ run-name: 🔬 @${{ github.triggering_actor }} is checking quality on ${{ github
 on: [push]
 
 jobs:
-  test-playwright:
+  integration-tests:
+    name: ⚙️ integration tests
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        package-manager:
-          - python-pip
-          - python-pipenv
-          - python-poetry
+        buildpack:
+          - install
+          - playwright
+          - python-security
     steps:
       - uses: actions/checkout@v4
       - id: setup-tools
         uses: buildpacks/github-actions/setup-tools@v5.1.0
       - id: setup-pack
         uses: buildpacks/github-actions/setup-pack@v5.1.0
-      - run: make test-${{ matrix.package-manager }}
-        working-directory: playwright/
-
-  test-python-security:
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        package-manager:
-          - python-pip
-          - python-pipenv
-    steps:
-      - uses: actions/checkout@v4
-      - id: setup-tools
-        uses: buildpacks/github-actions/setup-tools@v5.1.0
-      - id: setup-pack
-        uses: buildpacks/github-actions/setup-pack@v5.1.0
-      - run: make test-${{ matrix.package-manager }}
-        working-directory: python-security/
-
-  test-install:
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        package-manager:
-          - apt
-    steps:
-      - uses: actions/checkout@v4
-      - id: setup-tools
-        uses: buildpacks/github-actions/setup-tools@v5.1.0
-      - id: setup-pack
-        uses: buildpacks/github-actions/setup-pack@v5.1.0
-      - run: make test-${{ matrix.package-manager }}
-        working-directory: install/
+      - run: make test
+        working-directory: ${{ matrix.buildpack }}/

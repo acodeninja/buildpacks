@@ -2,7 +2,8 @@ package main
 
 import (
 	"fmt"
-	"github.com/acodeninja/buildpacks/helpers"
+	"github.com/acodeninja/buildpacks/common"
+	"github.com/acodeninja/buildpacks/common/apt"
 	"github.com/buildpacks/libcnb"
 	"github.com/paketo-buildpacks/libpak/bard"
 	"strings"
@@ -17,7 +18,7 @@ func (b Build) Build(context libcnb.BuildContext) (libcnb.BuildResult, error) {
 
 	result := libcnb.NewBuildResult()
 
-	_, err = helpers.InitialiseBuild(context, b.Logger)
+	_, err = common.InitialiseBuild(context, b.Logger)
 	if err != nil {
 		return result, err
 	}
@@ -31,7 +32,7 @@ func (b Build) Build(context libcnb.BuildContext) (libcnb.BuildResult, error) {
 			if err != nil {
 				return result, err
 			}
-			result.Layers = append(result.Layers, helpers.NewAptLayer(UbuntuPackages, "dependencies", b.Logger, true))
+			result.Layers = append(result.Layers, apt.CreateLayerContributor(UbuntuPackages, "dependencies", b.Logger, true))
 			result.Layers = append(result.Layers, NewPlaywrightLayer(version.(string), language.(string), temporaryLayer, b.Logger))
 		default:
 			return libcnb.BuildResult{}, fmt.Errorf("received unexpected buildpack plan entry %q", entry.Name)

@@ -4,7 +4,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/BurntSushi/toml"
-	"github.com/acodeninja/buildpacks/helpers"
+	"github.com/acodeninja/buildpacks/common"
+	"github.com/acodeninja/buildpacks/common/apt"
+	"github.com/acodeninja/buildpacks/common/command"
 	"github.com/buildpacks/libcnb"
 	"github.com/paketo-buildpacks/libpak"
 	"github.com/paketo-buildpacks/libpak/bard"
@@ -57,12 +59,12 @@ func (playwright PlaywrightLayer) Contribute(layer libcnb.Layer) (libcnb.Layer, 
 
 		switch playwright.PlaywrightLanguage {
 		case "python":
-			err = helpers.InstallAptPackages(playwright.TemporaryLayer, []string{"python3-distutils", "python3-full", "python3-pip"}, playwright.Logger, true)
+			err = apt.InstallAptPackages(playwright.TemporaryLayer, []string{"python3-distutils", "python3-full", "python3-pip"}, playwright.Logger, true)
 
 			playwright.Logger.Headerf("Installing playwright version %s", playwright.PlaywrightVersion)
 
-			installPlaywright := helpers.GetCommand(
-				helpers.IndentedWriterFactory(0, playwright.Logger),
+			installPlaywright := command.Make(
+				common.IndentedWriterFactory(0, playwright.Logger),
 				fmt.Sprintf("%s/usr/bin/python3", playwright.TemporaryLayer.Path),
 				"-m",
 				"pip",
@@ -70,7 +72,7 @@ func (playwright PlaywrightLayer) Contribute(layer libcnb.Layer) (libcnb.Layer, 
 				fmt.Sprintf("playwright==%s", playwright.PlaywrightVersion),
 			)
 
-			helpers.InjectLayerEnvironment(installPlaywright, playwright.TemporaryLayer.BuildEnvironment)
+			command.InjectLayerEnvironment(installPlaywright, playwright.TemporaryLayer.BuildEnvironment)
 
 			err = installPlaywright.Run()
 
@@ -79,8 +81,8 @@ func (playwright PlaywrightLayer) Contribute(layer libcnb.Layer) (libcnb.Layer, 
 			}
 
 			playwright.Logger.Header("Installing playwright dependencies")
-			playwrightInstall := helpers.GetCommand(
-				helpers.IndentedWriterFactory(0, playwright.Logger),
+			playwrightInstall := command.Make(
+				common.IndentedWriterFactory(0, playwright.Logger),
 				fmt.Sprintf("%s/usr/bin/python3", playwright.TemporaryLayer.Path),
 				"-m",
 				"playwright",
@@ -90,7 +92,7 @@ func (playwright PlaywrightLayer) Contribute(layer libcnb.Layer) (libcnb.Layer, 
 				os.Environ(),
 				fmt.Sprintf("PLAYWRIGHT_BROWSERS_PATH=%s", layer.Path),
 			)
-			helpers.InjectLayerEnvironment(playwrightInstall, playwright.TemporaryLayer.BuildEnvironment)
+			command.InjectLayerEnvironment(playwrightInstall, playwright.TemporaryLayer.BuildEnvironment)
 			err = playwrightInstall.Run()
 
 			playwright.Logger.Header("Injecting Environment")

@@ -3,7 +3,8 @@ package main
 import (
 	"errors"
 	"fmt"
-	"github.com/acodeninja/buildpacks/helpers"
+	"github.com/acodeninja/buildpacks/common"
+	"github.com/acodeninja/buildpacks/common/apt"
 	"github.com/buildpacks/libcnb"
 	"github.com/paketo-buildpacks/libpak/bard"
 	"strings"
@@ -17,7 +18,7 @@ func (b Build) Build(context libcnb.BuildContext) (libcnb.BuildResult, error) {
 	var err error
 	result := libcnb.NewBuildResult()
 
-	_, err = helpers.InitialiseBuild(context, b.Logger)
+	_, err = common.InitialiseBuild(context, b.Logger)
 	if err != nil {
 		return result, err
 	}
@@ -30,7 +31,7 @@ func (b Build) Build(context libcnb.BuildContext) (libcnb.BuildResult, error) {
 				return libcnb.BuildResult{}, fmt.Errorf("failed to resolve packages from plan metadata:\n%w", err)
 			}
 
-			result.Layers = append(result.Layers, helpers.NewAptLayer(packages, "apt-install", b.Logger, true))
+			result.Layers = append(result.Layers, apt.CreateLayerContributor(packages, "apt-install", b.Logger, true))
 		default:
 			return libcnb.BuildResult{}, fmt.Errorf("received unexpected buildpack plan entry %q", entry.Name)
 		}
