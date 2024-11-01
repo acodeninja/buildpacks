@@ -12,7 +12,5 @@ test: test-bash
 
 .PHONY: test-bash
 test-bash: package
-	@cd fixtures/bash && pack build test-psql-bash
-	@docker run --rm --platform linux/amd64 --entrypoint test test-psql-bash
 	@cd fixtures/bash && pack build --clear-cache test-psql-bash
 	@docker run --rm --platform linux/amd64 --entrypoint test test-psql-bash
