@@ -2,15 +2,21 @@ package layers
 
 import (
 	"fmt"
-	"github.com/acodeninja/buildpacks/common"
 	"github.com/buildpacks/libcnb"
 	"github.com/paketo-buildpacks/libpak/bard"
 	"os"
 	"strings"
 )
 
+type LayerEnv struct {
+	Type      string
+	Value     string
+	Delimiter string
+	Current   string
+}
+
 func GetLayerEnvironment(layer libcnb.Layer, logger bard.Logger) []string {
-	layerEnv := map[string]common.LayerEnv{}
+	layerEnv := map[string]LayerEnv{}
 	osEnv := map[string]string{}
 
 	logger.Headerf("  Loading environment variables from %s layer", layer.Name)
@@ -25,7 +31,7 @@ func GetLayerEnvironment(layer libcnb.Layer, logger bard.Logger) []string {
 		variableName := segments[0]
 		_, exists := layerEnv[variableName]
 		if !exists {
-			layerEnv[variableName] = common.LayerEnv{
+			layerEnv[variableName] = LayerEnv{
 				Type:      "",
 				Value:     "",
 				Delimiter: ":",
