@@ -12,13 +12,14 @@ import (
 	"text/template"
 )
 
-//go:embed psql.sh
+//go:embed wrapper.sh
 var embeddedFiles embed.FS
 
-type PSQLScriptData struct {
+type WrapperScriptInput struct {
 	LibLocations       []string
 	PerlLibLocation    string
 	PostgresClientPath string
+	PostgresCommand    string
 }
 
 type PostgresClientLayer struct {
@@ -77,59 +78,28 @@ func (psql PostgresClientLayer) Contribute(layer libcnb.Layer) (libcnb.Layer, er
 			return libcnb.Layer{}, fmt.Errorf("unable to install postgresql-client\n%w", err)
 		}
 
-		psql.Logger.Header("Installing bash wrapper")
-
-		psqlScript, err := embeddedFiles.ReadFile("psql.sh")
-		if err != nil {
-			return libcnb.Layer{}, fmt.Errorf("unable to read embeded psql script\n%w", err)
+		psql.Logger.Header("Installing command wrappers")
+		commandsToWrap := []string{
+			"pg_amcheck",
+			"pgbench",
+			"pg_config",
+			"pg_dump",
+			"pg_dumpall",
+			"pg_isready",
+			"pg_receivewal",
+			"pg_restore",
+			"psql",
 		}
 
-		psqlFileTemplate, err := template.New("psql").Parse(string(psqlScript))
-		if err != nil {
-			return libcnb.Layer{}, fmt.Errorf("unable to parse psql script template\n%w", err)
+		for _, command := range commandsToWrap {
+			err = WriteWrapperToBin(layer, psql.Logger, command)
+			if err != nil {
+				return libcnb.Layer{}, err
+			}
 		}
 
-		psqlFileLocation := fmt.Sprintf("%s/psql-bin", layer.Path)
-
-		err = os.MkdirAll(psqlFileLocation, os.ModePerm)
-		if err != nil {
-			return libcnb.Layer{}, fmt.Errorf("unable to create psql script location\n%w", err)
-		}
-
-		psqlFile, err := os.Create(fmt.Sprintf("%s/psql", psqlFileLocation))
-		if err != nil {
-			return libcnb.Layer{}, fmt.Errorf("unable to create psql wrapper file\n%w", err)
-		}
-
-		err = psqlFileTemplate.Execute(psqlFile, PSQLScriptData{
-			LibLocations: []string{
-				fmt.Sprintf("%s/usr/lib/x86_64-linux-gnu/sasl2", layer.Path),
-				fmt.Sprintf("%s/usr/lib/x86_64-linux-gnu", layer.Path),
-				fmt.Sprintf("%s/lib/x86_64-linux-gnu", layer.Path),
-			},
-			PerlLibLocation:    fmt.Sprintf("%s/usr/share/perl5", layer.Path),
-			PostgresClientPath: fmt.Sprintf("%s/usr/lib/postgresql/14/bin", layer.Path),
-		})
-		if err != nil {
-			return libcnb.Layer{}, fmt.Errorf("unable to create psql wrapper file\n%w", err)
-		}
-
-		err = psqlFile.Sync()
-		if err != nil {
-			return libcnb.Layer{}, fmt.Errorf("unable to sync psql script\n%w", err)
-		}
-
-		err = psqlFile.Close()
-		if err != nil {
-			return libcnb.Layer{}, fmt.Errorf("unable to close psql script\n%w", err)
-		}
-
-		err = os.Chmod(fmt.Sprintf("%s/psql", psqlFileLocation), 0775)
-		if err != nil {
-			return libcnb.Layer{}, fmt.Errorf("unable to chmod psql script\n%w", err)
-		}
-
-		layer.SharedEnvironment.Prepend("PATH", ":", psqlFileLocation)
+		psql.Logger.Header("Writing environment")
+		layer.SharedEnvironment.Prepend("PATH", ":", fmt.Sprintf("%s/psql-bin", layer.Path))
 
 		layer.LayerTypes.Build = true
 		layer.LayerTypes.Launch = true
@@ -141,6 +111,63 @@ func (psql PostgresClientLayer) Contribute(layer libcnb.Layer) (libcnb.Layer, er
 
 func (psql PostgresClientLayer) Name() string {
 	return "psql"
+}
+
+func WriteWrapperToBin(layer libcnb.Layer, logger bard.Logger, pgBinary string) error {
+	logger.Bodyf("Writing wrapper script for %s", pgBinary)
+
+	script, err := embeddedFiles.ReadFile("wrapper.sh")
+	if err != nil {
+		return fmt.Errorf("unable to read embeded %s script\n%w", pgBinary, err)
+	}
+
+	wrapperFileTemplate, err := template.New("wrapper").Parse(string(script))
+	if err != nil {
+		return fmt.Errorf("unable to parse %s script template\n%w", pgBinary, err)
+	}
+
+	wrapperFileLocation := fmt.Sprintf("%s/psql-bin", layer.Path)
+
+	err = os.MkdirAll(wrapperFileLocation, os.ModePerm)
+	if err != nil {
+		return fmt.Errorf("unable to create %s script location\n%w", pgBinary, err)
+	}
+
+	wrapperFile, err := os.Create(fmt.Sprintf("%s/%s", wrapperFileLocation, pgBinary))
+	if err != nil {
+		return fmt.Errorf("unable to create %s wrapper file\n%w", pgBinary, err)
+	}
+
+	err = wrapperFileTemplate.Execute(wrapperFile, WrapperScriptInput{
+		LibLocations: []string{
+			fmt.Sprintf("%s/usr/lib/x86_64-linux-gnu/sasl2", layer.Path),
+			fmt.Sprintf("%s/usr/lib/x86_64-linux-gnu", layer.Path),
+			fmt.Sprintf("%s/lib/x86_64-linux-gnu", layer.Path),
+		},
+		PerlLibLocation:    fmt.Sprintf("%s/usr/share/perl5", layer.Path),
+		PostgresClientPath: fmt.Sprintf("%s/usr/lib/postgresql/14/bin", layer.Path),
+		PostgresCommand:    pgBinary,
+	})
+	if err != nil {
+		return fmt.Errorf("unable to create %s wrapper file\n%w", pgBinary, err)
+	}
+
+	err = wrapperFile.Sync()
+	if err != nil {
+		return fmt.Errorf("unable to sync %s script\n%w", pgBinary, err)
+	}
+
+	err = wrapperFile.Close()
+	if err != nil {
+		return fmt.Errorf("unable to close %s script\n%w", pgBinary, err)
+	}
+
+	err = os.Chmod(fmt.Sprintf("%s/%s", wrapperFileLocation, pgBinary), 0775)
+	if err != nil {
+		return fmt.Errorf("unable to chmod %s script\n%w", pgBinary, err)
+	}
+
+	return nil
 }
 
 func ResolvePostgresClientVersion(logger bard.Logger) string {

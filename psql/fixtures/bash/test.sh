@@ -1,26 +1,40 @@
 #!/usr/bin/env bash
 
-PSQL_WHICH_TEST_OUTCOME=""
-PSQL_WHICH="$(which psql)"
-if [[ "$PSQL_WHICH" == "/layers/acodeninja_psql/psql/psql-bin/psql" ]]
-then
-  PSQL_WHICH_TEST_OUTCOME="passed 🟢"
-else
-  PSQL_WHICH_TEST_OUTCOME="psql is located at $PSQL_WHICH 🔴"
-fi
-echo "psql command location: $PSQL_WHICH_TEST_OUTCOME"
+TESTS_FAILED=""
+CURRENT_TEST_GROUP_NAME=""
 
-PSQL_VERSION_TEST_OUTCOME=""
-PSQL_VERSION="$(psql --version)"
-if [[ "$PSQL_VERSION" =~ "(PostgreSQL) 14" ]]
-then
-  PSQL_VERSION_TEST_OUTCOME="passed 🟢"
-else
-  PSQL_VERSION_TEST_OUTCOME="psql version is $PSQL_VERSION 🔴"
-fi
-echo "psql command version: $PSQL_VERSION_TEST_OUTCOME"
+function test_group() {
+  TEST_GROUP_NAME=$1
+  CURRENT_TEST_GROUP_NAME="$TEST_GROUP_NAME"
+}
 
-if [[ "$PSQL_VERSION_TEST_OUTCOME" == "passed 🟢" && "$PSQL_VERSION_TEST_OUTCOME" == "passed 🟢" ]]
+function run_test() {
+  TEST_NAME=$1
+  TEST_COMMAND=$2
+  TEST_EXPECTED_OUTPUT=$3
+
+  TEST_OUTCOME=""
+  TEST_OUTPUT=`$TEST_COMMAND 2>&1`
+  if [[ "$TEST_OUTPUT" =~ "$TEST_EXPECTED_OUTPUT" ]]
+  then
+    TEST_OUTCOME="passed 🟢"
+  else
+    TEST_OUTCOME="failed 🔴 - $TEST_OUTPUT"
+    TESTS_FAILED="yes"
+  fi
+  echo "[$CURRENT_TEST_GROUP_NAME][$TEST_NAME]: $TEST_OUTCOME"
+}
+
+COMMANDS_TO_TEST="pg_amcheck pgbench pg_config pg_dump pg_dumpall pg_isready pg_receivewal pg_restore psql"
+
+for COMMAND_TO_TEST in $COMMANDS_TO_TEST; do
+  test_group "$COMMAND_TO_TEST"
+  run_test "location" "which $COMMAND_TO_TEST" "/layers/acodeninja_psql/psql/psql-bin/$COMMAND_TO_TEST"
+  run_test "$COMMAND_TO_TEST version" "$COMMAND_TO_TEST --version" "14"
+  run_test "$COMMAND_TO_TEST server" "$COMMAND_TO_TEST --version" "PostgreSQL"
+done
+
+if [[ -z "$TESTS_FAILED" ]]
 then
   exit 0
 else

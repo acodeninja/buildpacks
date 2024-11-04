@@ -50,7 +50,7 @@ func InstallAptPackages(layer libcnb.Layer, packageList []string, logger bard.Lo
 		if err != nil {
 			return err
 		}
-		logger.Body("  Created", directory)
+		logger.Body("  Created ", directory)
 	}
 
 	err = common.CopyFile("/etc/apt/sources.list", fmt.Sprintf("%s/sources.list", aptSourcesDirectory))
