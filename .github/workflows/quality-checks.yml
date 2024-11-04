@@ -5,9 +5,23 @@ run-name: 🔬 @${{ github.triggering_actor }} is checking quality on ${{ github
 on: [push]
 
 jobs:
-  enumerate-buildpack-tests:
+  unit-tests:
+    name: 🧪 unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: echo "version=$(grep -Ee 'go [0-9\.]+' go.mod | awk '{ print $2; }')" >> $GITHUB_OUTPUT
+        id: go_mod
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ steps.go_mod.outputs.version }}
+          cache-dependency-path: "**/*.sum"
+      - run: go test ./...
+
+  enumerate-integration-tests:
     name: 🔎 enumerate buildpack tests
     runs-on: ubuntu-latest
+    needs: [ unit-tests ]
     outputs:
       tests: ${{ steps.buildpack-tests.outputs.result }}
     steps:
@@ -39,12 +53,12 @@ jobs:
 
   integration-tests:
       name: ⚙️ integration test ${{ matrix.buildpack-test }}
-      needs: [ enumerate-buildpack-tests ]
+      needs: [ enumerate-integration-tests ]
       runs-on: ubuntu-latest
       strategy:
         fail-fast: false
         matrix:
-          buildpack-test: ${{ fromJSON(needs.enumerate-buildpack-tests.outputs.tests) }}
+          buildpack-test: ${{ fromJSON(needs.enumerate-integration-tests.outputs.tests) }}
       steps:
         - uses: actions/checkout@v4
         - id: setup-tools
