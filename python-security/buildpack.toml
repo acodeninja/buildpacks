@@ -3,7 +3,7 @@ api = "0.8"
 [buildpack]
     id = "acodeninja/python-security"
     name = "ACodeNinja Buildpack for Python Security"
-    version = "2.0.3"
+    version = "2.0.4"
     homepage = "https://github.com/acodeninja/buildpacks/tree/main/python-security"
 
     [[buildpack.licenses]]
