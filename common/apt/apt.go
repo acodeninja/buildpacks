@@ -108,7 +108,44 @@ func InstallAptPackages(layer libcnb.Layer, packageList []string, logger bard.Lo
 		layer.SharedEnvironment.Prepend("CPPPATH", ":", includePath)
 	}
 
+	logger.Header("  Cleaning up APT packages")
+	err = aptAutoClean(common.IndentedWriterFactory(2, logger), aptCacheDirectory, aptStateDirectory, aptSourcesDirectory)
+	if err != nil {
+		return err
+	}
+
+	err = aptClean(common.IndentedWriterFactory(2, logger), aptCacheDirectory, aptStateDirectory, aptSourcesDirectory)
+	if err != nil {
+		return err
+	}
+
 	return nil
+}
+
+func aptAutoClean(writer io.Writer, aptCacheDirectory, aptStateDirectory, aptSourcesDirectory string) error {
+	return command.Run(
+		writer,
+		"apt-get",
+		"-o", "debug::nolocking=true",
+		"-o", "dir::etc::sourceparts=/dev/null",
+		"-o", fmt.Sprintf("dir::cache=%s", aptCacheDirectory),
+		"-o", fmt.Sprintf("dir::state=%s", aptStateDirectory),
+		"-o", fmt.Sprintf("dir::etc::sourcelist=%s/sources.list", aptSourcesDirectory),
+		"autoclean",
+	)
+}
+
+func aptClean(writer io.Writer, aptCacheDirectory, aptStateDirectory, aptSourcesDirectory string) error {
+	return command.Run(
+		writer,
+		"apt-get",
+		"-o", "debug::nolocking=true",
+		"-o", "dir::etc::sourceparts=/dev/null",
+		"-o", fmt.Sprintf("dir::cache=%s", aptCacheDirectory),
+		"-o", fmt.Sprintf("dir::state=%s", aptStateDirectory),
+		"-o", fmt.Sprintf("dir::etc::sourcelist=%s/sources.list", aptSourcesDirectory),
+		"clean",
+	)
 }
 
 func aptUpdate(writer io.Writer, aptCacheDirectory, aptStateDirectory, aptSourcesDirectory string) error {

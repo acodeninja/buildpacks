@@ -7,7 +7,6 @@ import (
 	"github.com/acodeninja/buildpacks/common/apt"
 	"github.com/acodeninja/buildpacks/common/command"
 	"github.com/acodeninja/buildpacks/common/fontconfig"
-	"github.com/acodeninja/buildpacks/common/layers"
 	"github.com/buildpacks/libcnb"
 	"github.com/paketo-buildpacks/libpak"
 	"github.com/paketo-buildpacks/libpak/bard"
@@ -84,7 +83,6 @@ func (graphviz GraphvizLayer) Contribute(layer libcnb.Layer) (libcnb.Layer, erro
 		}
 
 		cmd = command.Make(common.IndentedWriterFactory(2, graphviz.Logger), fmt.Sprintf("%s/graphviz-bin/dot", layer.Path), "-c")
-		cmd.Env = layers.GetLayerEnvironment(layer, graphviz.Logger)
 		err = cmd.Run()
 		if err != nil {
 			return libcnb.Layer{}, err
