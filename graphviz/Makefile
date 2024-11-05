@@ -8,6 +8,9 @@ include ../scripts/requirements.mk
 include ../scripts/package.mk
 
 .PHONY: test
-test: package
+test: test-basic
+
+.PHONY: test-basic
+test-basic: package
 	@cd fixtures/basic && pack build --clear-cache test-basic
 	@docker run --rm --platform linux/amd64 --entrypoint test test-basic
