@@ -3,7 +3,7 @@ api = "0.8"
 [buildpack]
     id = "acodeninja/graphviz"
     name = "ACodeNinja Buildpack for Graphviz"
-    version = "1.0.0"
+    version = "1.0.1"
     homepage = "https://github.com/acodeninja/buildpacks/graphviz"
 
     [[buildpack.licenses]]
