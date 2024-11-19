@@ -74,9 +74,10 @@ func (psql PostgresClientLayer) Contribute(layer libcnb.Layer) (libcnb.Layer, er
 				"libsasl2-2",
 				"libldap-2.5-0",
 				"libpq5",
+				"libpq-dev",
 			},
 			psql.Logger,
-			true,
+			false,
 		)
 		if err != nil {
 			return libcnb.Layer{}, fmt.Errorf("unable to install postgresql-client\n%w", err)
