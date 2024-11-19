@@ -34,6 +34,16 @@ for COMMAND_TO_TEST in $COMMANDS_TO_TEST; do
   run_test "$COMMAND_TO_TEST server" "$COMMAND_TO_TEST --version" "PostgreSQL"
 done
 
+QUERY_OUTPUT="$(psql "$DATABASE_URL" -c "SELECT datname FROM pg_database;")"
+
+if [[ "$QUERY_OUTPUT" =~ "template1" ]]; then
+  echo "[psql][run query]: passed 🟢"
+else
+  echo "[psql][run query]: failed 🔴"
+  diff  <(echo "$QUERY_OUTPUT" ) <(echo "$QUERY_EXPECTED")
+  TESTS_FAILED="yes"
+fi
+
 if [[ -z "$TESTS_FAILED" ]]
 then
   exit 0
