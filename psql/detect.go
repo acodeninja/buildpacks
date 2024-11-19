@@ -25,7 +25,8 @@ func (d Detect) Detect(context libcnb.DetectContext) (libcnb.DetectResult, error
 					{
 						Name: "postgres-client",
 						Metadata: map[string]interface{}{
-							"psql-version": psqlVersion,
+							"psql-version":      psqlVersion,
+							"buildpack-version": context.Buildpack.Info.Version,
 						},
 					},
 				},
