@@ -28,15 +28,17 @@ type PostgresClientLayer struct {
 	Logger                 bard.Logger
 	PostgresClientVersion  string
 	PostgresClientLanguage string
+	BuildpackVersion       string
 }
 
-func NewPostgresClientLayer(psqlVersion string, logger bard.Logger) *PostgresClientLayer {
+func NewPostgresClientLayer(psqlVersion string, buildpackVersion string, logger bard.Logger) *PostgresClientLayer {
 	return &PostgresClientLayer{
 		LayerName: fmt.Sprintf("psql-%s", psqlVersion),
 		LayerContributor: libpak.NewLayerContributor(
 			fmt.Sprintf("psql-%s", psqlVersion),
 			map[string]interface{}{
-				"psql-version": psqlVersion,
+				"psql-version":      psqlVersion,
+				"buildpack-version": buildpackVersion,
 			},
 			libcnb.LayerTypes{
 				Build:  true,
@@ -46,6 +48,7 @@ func NewPostgresClientLayer(psqlVersion string, logger bard.Logger) *PostgresCli
 		),
 		Logger:                logger,
 		PostgresClientVersion: psqlVersion,
+		BuildpackVersion:      buildpackVersion,
 	}
 }
 
@@ -57,6 +60,7 @@ func (psql PostgresClientLayer) Contribute(layer libcnb.Layer) (libcnb.Layer, er
 			layer.Metadata = map[string]interface{}{}
 		}
 		layer.Metadata["psql-version"] = psql.PostgresClientVersion
+		layer.Metadata["buildpack-version"] = psql.BuildpackVersion
 
 		var err error
 

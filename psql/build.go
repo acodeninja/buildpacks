@@ -26,7 +26,7 @@ func (b Build) Build(context libcnb.BuildContext) (libcnb.BuildResult, error) {
 				return result, err
 			}
 			//result.Layers = append(result.Layers, apt.CreateLayerContributor([]string{"postgresql-client"}, "dependencies", b.Logger, true))
-			result.Layers = append(result.Layers, NewPostgresClientLayer(version, b.Logger))
+			result.Layers = append(result.Layers, NewPostgresClientLayer(version, context.Buildpack.Info.Version, b.Logger))
 		default:
 			return libcnb.BuildResult{}, fmt.Errorf("received unexpected buildpack plan entry %q", entry.Name)
 		}
