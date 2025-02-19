@@ -1,0 +1,26 @@
+[_]
+schema-version = "0.2"
+id = "io.buildpacks.test-bash"
+version = "0.1"
+
+[io.buildpacks]
+builder = "paketobuildpacks/builder-jammy-base"
+
+[[io.buildpacks.group]]
+uri = "paketo-buildpacks/python"
+
+[[io.buildpacks.group]]
+uri = "paketo-buildpacks/procfile@5.10.0"
+
+#[[io.buildpacks.group]]
+#id = "inline/run-script"
+#[io.buildpacks.group.script]
+#api = "0.10"
+#shell = "/bin/bash"
+#inline = '''
+#         echo "/layers/group.toml"
+#         cat /layers/group.toml
+#         '''
+
+[[io.buildpacks.group]]
+uri = "../../"
