@@ -2,9 +2,10 @@ package main
 
 import (
 	"fmt"
+	"strings"
+
 	"github.com/buildpacks/libcnb"
 	"github.com/paketo-buildpacks/libpak/bard"
-	"strings"
 )
 
 type Build struct {
@@ -21,12 +22,9 @@ func (b Build) Build(context libcnb.BuildContext) (libcnb.BuildResult, error) {
 	for _, entry := range context.Plan.Entries {
 		switch strings.ToLower(entry.Name) {
 		case "postgres-client":
-			version := "14" // entry.Metadata["psql-version"]
-			if err != nil {
-				return result, err
+			if version, ok := entry.Metadata["psql-version"].(string); ok {
+				result.Layers = append(result.Layers, NewPostgresClientLayer(version, context.Buildpack.Info.Version, b.Logger))
 			}
-			//result.Layers = append(result.Layers, apt.CreateLayerContributor([]string{"postgresql-client"}, "dependencies", b.Logger, true))
-			result.Layers = append(result.Layers, NewPostgresClientLayer(version, context.Buildpack.Info.Version, b.Logger))
 		default:
 			return libcnb.BuildResult{}, fmt.Errorf("received unexpected buildpack plan entry %q", entry.Name)
 		}

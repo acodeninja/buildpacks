@@ -1,0 +1,21 @@
+services:
+  app:
+    image: test-psql-bash
+    entrypoint: test
+    environment:
+      DATABASE_URL: postgresql://postgres:example@database:5432/postgres
+    links:
+      - database
+    depends_on:
+      database:
+        condition: service_healthy
+
+  database:
+    image: postgres:latest
+    environment:
+      POSTGRES_PASSWORD: example
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5

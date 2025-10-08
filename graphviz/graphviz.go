@@ -3,6 +3,10 @@ package main
 import (
 	"embed"
 	"fmt"
+	"os"
+	"os/exec"
+	"text/template"
+
 	"github.com/acodeninja/buildpacks/common"
 	"github.com/acodeninja/buildpacks/common/apt"
 	"github.com/acodeninja/buildpacks/common/command"
@@ -10,9 +14,6 @@ import (
 	"github.com/buildpacks/libcnb"
 	"github.com/paketo-buildpacks/libpak"
 	"github.com/paketo-buildpacks/libpak/bard"
-	"os"
-	"os/exec"
-	"text/template"
 )
 
 //go:embed wrapper.sh
@@ -64,6 +65,7 @@ func (graphviz GraphvizLayer) Contribute(layer libcnb.Layer) (libcnb.Layer, erro
 				"libbrotli1",
 				"glib2.0",
 			},
+			[]apt.AdditionalSource{},
 			graphviz.Logger,
 			true,
 		)

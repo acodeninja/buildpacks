@@ -42,7 +42,7 @@ func (apt Layer) Contribute(layer libcnb.Layer) (libcnb.Layer, error) {
 		}
 		layer.Metadata["packages"] = apt.Packages
 
-		err := InstallAptPackages(layer, apt.Packages, apt.Logger, false)
+		err := InstallAptPackages(layer, apt.Packages, []AdditionalSource{}, apt.Logger, false)
 
 		return layer, err
 	})
