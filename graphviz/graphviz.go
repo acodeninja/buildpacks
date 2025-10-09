@@ -3,16 +3,16 @@ package main
 import (
 	"embed"
 	"fmt"
-	"github.com/acodeninja/buildpacks/common"
-	"github.com/acodeninja/buildpacks/common/apt"
-	"github.com/acodeninja/buildpacks/common/command"
-	"github.com/acodeninja/buildpacks/common/fontconfig"
-	"github.com/buildpacks/libcnb"
-	"github.com/paketo-buildpacks/libpak"
-	"github.com/paketo-buildpacks/libpak/bard"
 	"os"
 	"os/exec"
 	"text/template"
+
+	"github.com/acodeninja/buildpacks/common"
+	"github.com/acodeninja/buildpacks/common/apt"
+	"github.com/acodeninja/buildpacks/common/command"
+	"github.com/buildpacks/libcnb"
+	"github.com/paketo-buildpacks/libpak"
+	"github.com/paketo-buildpacks/libpak/bard"
 )
 
 //go:embed wrapper.sh
@@ -64,15 +64,10 @@ func (graphviz GraphvizLayer) Contribute(layer libcnb.Layer) (libcnb.Layer, erro
 				"libbrotli1",
 				"glib2.0",
 			},
+			[]apt.AdditionalSource{},
 			graphviz.Logger,
 			true,
 		)
-		if err != nil {
-			return libcnb.Layer{}, err
-		}
-
-		graphviz.Logger.Header("Configuring graphviz")
-		err = fontconfig.ConfigPathRepoint(layer)
 		if err != nil {
 			return libcnb.Layer{}, err
 		}

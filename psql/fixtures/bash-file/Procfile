@@ -1,0 +1,2 @@
+web: echo "web"
+test: bash test.sh

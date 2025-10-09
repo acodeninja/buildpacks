@@ -13,11 +13,15 @@ require (
 require (
 	github.com/Masterminds/semver/v3 v3.3.0 // indirect
 	github.com/creack/pty v1.1.24 // indirect
+	github.com/hashicorp/hcl v1.0.0 // indirect
 	github.com/heroku/color v0.0.6 // indirect
 	github.com/imdario/mergo v0.3.16 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/mitchellh/hashstructure/v2 v2.0.2 // indirect
 	github.com/onsi/gomega v1.35.1 // indirect
+	github.com/pelletier/go-toml v1.9.2 // indirect
+	github.com/sclevine/yj v0.0.0-20210612025309-737bdf40a5d1 // indirect
 	golang.org/x/sys v0.26.0 // indirect
+	gopkg.in/yaml.v3 v3.0.1 // indirect
 )

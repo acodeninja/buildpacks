@@ -3,17 +3,26 @@ package apt
 import (
 	"errors"
 	"fmt"
-	"github.com/acodeninja/buildpacks/common"
-	"github.com/acodeninja/buildpacks/common/command"
-	"github.com/buildpacks/libcnb"
-	"github.com/paketo-buildpacks/libpak/bard"
 	"io"
 	"os"
 	"path/filepath"
 	"slices"
+	"strings"
+
+	"github.com/acodeninja/buildpacks/common"
+	"github.com/acodeninja/buildpacks/common/command"
+	"github.com/buildpacks/libcnb"
+	"github.com/paketo-buildpacks/libpak/bard"
 )
 
-func InstallAptPackages(layer libcnb.Layer, packageList []string, logger bard.Logger, buildOnly bool) error {
+type AdditionalSource struct {
+	PublicKeyUrl string
+	Uri          string
+	Suite        string
+	Component    string
+}
+
+func InstallAptPackages(layer libcnb.Layer, packageList []string, additionalSources []AdditionalSource, logger bard.Logger, buildOnly bool) error {
 	var err error
 
 	logger.Headerf("Installing APT packages in %s layer", layer.Name)
@@ -41,6 +50,7 @@ func InstallAptPackages(layer libcnb.Layer, packageList []string, logger bard.Lo
 		aptCacheDirectory,
 		aptStateDirectory,
 		aptSourcesDirectory,
+		fmt.Sprintf("%s/sources.list.d", aptSourcesDirectory),
 		aptArchiveDirectory,
 		aptListsDirectory,
 	}
@@ -56,6 +66,48 @@ func InstallAptPackages(layer libcnb.Layer, packageList []string, logger bard.Lo
 	err = common.CopyFile("/etc/apt/sources.list", fmt.Sprintf("%s/sources.list", aptSourcesDirectory))
 	if err != nil {
 		return err
+	}
+
+	if len(additionalSources) > 0 {
+		logger.Headerf("  Adding additional sources")
+
+		for index, source := range additionalSources {
+			publicKeyPath := ""
+			if source.PublicKeyUrl != "" {
+				publicKeyPath = fmt.Sprintf("%s/apt.%d.key", layer.Path, index)
+
+				_, err = common.DownloadFile(
+					publicKeyPath,
+					source.PublicKeyUrl,
+				)
+				if err != nil {
+					return fmt.Errorf("unable to download public key\n%w", err)
+				}
+			}
+
+			sourceDeclaration := []string{"deb"}
+			if publicKeyPath != "" {
+				sourceDeclaration = append(sourceDeclaration, fmt.Sprintf("[signed-by=%s]", publicKeyPath))
+			}
+			sourceDeclaration = append(sourceDeclaration, source.Uri, source.Suite, source.Component)
+			logger.Body("  Adding ", strings.Join(sourceDeclaration, " "))
+
+			publicKeyPath = fmt.Sprintf("%s/apt.%d.key", layer.Path, index)
+
+			sourceListPath := fmt.Sprintf("%s/sources.list", aptSourcesDirectory)
+			f, err := os.OpenFile(sourceListPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+			if err != nil {
+				return fmt.Errorf("unable to create source %s\n%w", source.Uri, err)
+			}
+			_, err = f.WriteString(strings.Join(sourceDeclaration, " "))
+			if err != nil {
+				return fmt.Errorf("unable to create source %s\n%w", source.Uri, err)
+			}
+			err = f.Close()
+			if err != nil {
+				return fmt.Errorf("unable to create source %s\n%w", source.Uri, err)
+			}
+		}
 	}
 
 	logger.Header("  Updating APT sources")

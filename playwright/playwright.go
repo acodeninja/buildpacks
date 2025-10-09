@@ -3,6 +3,9 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"os"
+	"regexp"
+
 	"github.com/BurntSushi/toml"
 	"github.com/acodeninja/buildpacks/common"
 	"github.com/acodeninja/buildpacks/common/apt"
@@ -10,8 +13,6 @@ import (
 	"github.com/buildpacks/libcnb"
 	"github.com/paketo-buildpacks/libpak"
 	"github.com/paketo-buildpacks/libpak/bard"
-	"os"
-	"regexp"
 )
 
 type PlaywrightLayer struct {
@@ -59,7 +60,7 @@ func (playwright PlaywrightLayer) Contribute(layer libcnb.Layer) (libcnb.Layer, 
 
 		switch playwright.PlaywrightLanguage {
 		case "python":
-			err = apt.InstallAptPackages(playwright.TemporaryLayer, []string{"python3-distutils", "python3-full", "python3-pip"}, playwright.Logger, true)
+			err = apt.InstallAptPackages(playwright.TemporaryLayer, []string{"python3-distutils", "python3-full", "python3-pip"}, []apt.AdditionalSource{}, playwright.Logger, true)
 
 			playwright.Logger.Headerf("Installing playwright version %s", playwright.PlaywrightVersion)
 

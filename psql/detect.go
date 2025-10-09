@@ -12,7 +12,7 @@ type Detect struct {
 func (d Detect) Detect(context libcnb.DetectContext) (libcnb.DetectResult, error) {
 	d.Logger.Title(context.Buildpack)
 
-	psqlVersion := ResolvePostgresClientVersion(d.Logger)
+	psqlVersion := ResolvePostgresClientVersion(context, d.Logger)
 
 	return libcnb.DetectResult{
 		Pass: true,

@@ -3,13 +3,16 @@ package main
 import (
 	"embed"
 	"fmt"
+	"os"
+	"path"
+	"regexp"
+	"strings"
+	"text/template"
+
 	"github.com/acodeninja/buildpacks/common/apt"
 	"github.com/buildpacks/libcnb"
 	"github.com/paketo-buildpacks/libpak"
 	"github.com/paketo-buildpacks/libpak/bard"
-	"os"
-	"regexp"
-	"text/template"
 )
 
 //go:embed wrapper.sh
@@ -76,6 +79,14 @@ func (psql PostgresClientLayer) Contribute(layer libcnb.Layer) (libcnb.Layer, er
 				"libpq5",
 				"libpq-dev",
 			},
+			[]apt.AdditionalSource{
+				{
+					"https://www.postgresql.org/media/keys/ACCC4CF8.asc",
+					"https://apt.postgresql.org/pub/repos/apt",
+					fmt.Sprintf("%s-pgdg", ResolveUbuntuVersion(psql.Logger)),
+					"main",
+				},
+			},
 			psql.Logger,
 			false,
 		)
@@ -97,7 +108,7 @@ func (psql PostgresClientLayer) Contribute(layer libcnb.Layer) (libcnb.Layer, er
 		}
 
 		for _, command := range commandsToWrap {
-			err = WriteWrapperToBin(layer, psql.Logger, command)
+			err = WriteWrapperToBin(layer, psql.PostgresClientVersion, psql.Logger, command)
 			if err != nil {
 				return libcnb.Layer{}, err
 			}
@@ -118,7 +129,7 @@ func (psql PostgresClientLayer) Name() string {
 	return "psql"
 }
 
-func WriteWrapperToBin(layer libcnb.Layer, logger bard.Logger, pgBinary string) error {
+func WriteWrapperToBin(layer libcnb.Layer, postgresVersion string, logger bard.Logger, pgBinary string) error {
 	logger.Bodyf("Writing wrapper script for %s", pgBinary)
 
 	script, err := embeddedFiles.ReadFile("wrapper.sh")
@@ -150,7 +161,7 @@ func WriteWrapperToBin(layer libcnb.Layer, logger bard.Logger, pgBinary string) 
 			fmt.Sprintf("%s/lib/x86_64-linux-gnu", layer.Path),
 		},
 		PerlLibLocation:    fmt.Sprintf("%s/usr/share/perl5", layer.Path),
-		PostgresClientPath: fmt.Sprintf("%s/usr/lib/postgresql/14/bin", layer.Path),
+		PostgresClientPath: fmt.Sprintf("%s/usr/lib/postgresql/%s/bin", layer.Path, postgresVersion),
 		PostgresCommand:    pgBinary,
 	})
 	if err != nil {
@@ -175,28 +186,35 @@ func WriteWrapperToBin(layer libcnb.Layer, logger bard.Logger, pgBinary string) 
 	return nil
 }
 
-func ResolvePostgresClientVersion(logger bard.Logger) string {
-	psqlVersion := "14"
-	ubuntuVersion := ResolveUbuntuVersion(logger)
+func ResolvePostgresClientVersion(context libcnb.DetectContext, logger bard.Logger) string {
+	logger.Header("Resolving psql client version")
 
-	logger.Header("Resolving psql version")
+	content, err := os.ReadFile(path.Join(context.Application.Path, ".psql-version"))
+	if err == nil {
+		version := strings.TrimSpace(string(content))
+		logger.Bodyf("found version %s in .psql-version file", version)
+		return version
+	}
+
+	ubuntuVersion := ResolveUbuntuVersion(logger)
 
 	switch ubuntuVersion {
 	case "focal":
-		psqlVersion = "12"
+		logger.Body("found version 12 in ubuntu focal")
+		return "12"
 	case "jammy":
-		psqlVersion = "14"
+		logger.Body("found version 14 in ubuntu jammy")
+		return "14"
 	case "mantic":
-		psqlVersion = "15"
-	case "nobel":
-		psqlVersion = "16"
-	default:
-		psqlVersion = ""
+		logger.Body("found version 15 in ubuntu mantic")
+		return "15"
+	case "noble":
+		logger.Body("found version 16 in ubuntu noble")
+		return "16"
 	}
 
-	logger.Bodyf("Found version %s", psqlVersion)
-
-	return psqlVersion
+	logger.Body("no version found, defaulting to 14")
+	return "14"
 }
 
 func ResolveUbuntuVersion(logger bard.Logger) string {
