@@ -3,7 +3,6 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -83,35 +82,16 @@ func (playwright PlaywrightLayer) Contribute(layer libcnb.Layer) (libcnb.Layer, 
 				playwright.Logger.Bodyf("Using system python at %s", pythonBinary)
 			}
 
-			// Some base images ship python without the pip module. When that is
-			// the case, bootstrap pip into the temporary layer's user site with
-			// get-pip.py; pythonUserBase then drives --user installs and the
-			// PYTHONUSERBASE env so the bootstrapped pip and playwright resolve.
-			pythonUserBase := ""
-			if !pythonHasPip(pythonBinary, playwright.TemporaryLayer) {
-				playwright.Logger.Header("pip module not available, bootstrapping pip with get-pip.py")
-
-				pythonUserBase = playwright.TemporaryLayer.Path
-				if err = bootstrapPip(pythonBinary, pythonUserBase, playwright.TemporaryLayer, playwright.Logger); err != nil {
-					return layer, err
-				}
-			}
-
 			playwright.Logger.Headerf("Installing playwright version %s", playwright.PlaywrightVersion)
-
-			pipArgs := []string{"-m", "pip", "install", fmt.Sprintf("playwright==%s", playwright.PlaywrightVersion)}
-			if pythonUserBase != "" {
-				pipArgs = append(pipArgs, "--user")
-			}
 
 			installPlaywright := command.Make(
 				common.IndentedWriterFactory(0, playwright.Logger),
 				pythonBinary,
-				pipArgs...,
+				"-m",
+				"pip",
+				"install",
+				fmt.Sprintf("playwright==%s", playwright.PlaywrightVersion),
 			)
-			if pythonUserBase != "" {
-				installPlaywright.Env = append(installPlaywright.Env, fmt.Sprintf("PYTHONUSERBASE=%s", pythonUserBase))
-			}
 
 			command.InjectLayerEnvironment(installPlaywright, playwright.TemporaryLayer.BuildEnvironment)
 
@@ -133,9 +113,6 @@ func (playwright PlaywrightLayer) Contribute(layer libcnb.Layer) (libcnb.Layer, 
 				os.Environ(),
 				fmt.Sprintf("PLAYWRIGHT_BROWSERS_PATH=%s", layer.Path),
 			)
-			if pythonUserBase != "" {
-				playwrightInstall.Env = append(playwrightInstall.Env, fmt.Sprintf("PYTHONUSERBASE=%s", pythonUserBase))
-			}
 			command.InjectLayerEnvironment(playwrightInstall, playwright.TemporaryLayer.BuildEnvironment)
 			err = playwrightInstall.Run()
 
@@ -205,34 +182,6 @@ func findPythonUnder(root string) string {
 // systemRoot is the base image's filesystem root, probed when the layer has no
 // python of its own. It is a variable so tests can point it at a temp dir.
 var systemRoot = "/"
-
-// pythonHasPip reports whether the given interpreter can import the pip module.
-func pythonHasPip(pythonBinary string, tempLayer libcnb.Layer) bool {
-	check := command.Make(io.Discard, pythonBinary, "-m", "pip", "--version")
-	command.InjectLayerEnvironment(check, tempLayer.BuildEnvironment)
-	return check.Run() == nil
-}
-
-// bootstrapPip downloads get-pip.py and installs pip into userBase's user site
-// for the given interpreter, so a python that ships without pip can still drive
-// pip and playwright (run with PYTHONUSERBASE=userBase).
-func bootstrapPip(pythonBinary, userBase string, tempLayer libcnb.Layer, logger bard.Logger) error {
-	// The temporary layer directory may not exist yet on the system-python fast
-	// path (apt never ran), so DownloadFile's os.Create would otherwise fail.
-	if err := os.MkdirAll(userBase, os.ModePerm); err != nil {
-		return err
-	}
-
-	getPipPath := filepath.Join(userBase, "get-pip.py")
-	if _, err := common.DownloadFile(getPipPath, "https://bootstrap.pypa.io/get-pip.py"); err != nil {
-		return fmt.Errorf("unable to download get-pip.py\n%w", err)
-	}
-
-	getPip := command.Make(common.IndentedWriterFactory(0, logger), pythonBinary, getPipPath, "--user")
-	getPip.Env = append(getPip.Env, fmt.Sprintf("PYTHONUSERBASE=%s", userBase))
-	command.InjectLayerEnvironment(getPip, tempLayer.BuildEnvironment)
-	return getPip.Run()
-}
 
 func ResolvePlaywrightVersion(logger bard.Logger) (string, string) {
 	playwrightVersion := "1.62.0"
