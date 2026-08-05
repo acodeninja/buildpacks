@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
 	"regexp"
 
 	"github.com/BurntSushi/toml"
@@ -60,13 +61,32 @@ func (playwright PlaywrightLayer) Contribute(layer libcnb.Layer) (libcnb.Layer, 
 
 		switch playwright.PlaywrightLanguage {
 		case "python":
-			err = apt.InstallAptPackages(playwright.TemporaryLayer, []string{"python3-distutils", "python3-full", "python3-pip"}, []apt.AdditionalSource{}, playwright.Logger, true)
+			// If the base image already provides a python, use it and skip the
+			// expensive temporary-layer apt install. Only the "base" builders,
+			// which ship no system python, take the apt path below.
+			pythonBinary := findPythonUnder(systemRoot)
+
+			if pythonBinary == "" {
+				playwright.Logger.Header("No system python found, installing python via APT")
+
+				err = apt.InstallAptPackages(playwright.TemporaryLayer, []string{"python3-distutils", "python3-full", "python3-pip"}, []apt.AdditionalSource{}, playwright.Logger, true)
+				if err != nil {
+					return layer, err
+				}
+
+				pythonBinary, err = resolvePythonBinary(playwright.TemporaryLayer.Path)
+				if err != nil {
+					return layer, err
+				}
+			} else {
+				playwright.Logger.Bodyf("Using system python at %s", pythonBinary)
+			}
 
 			playwright.Logger.Headerf("Installing playwright version %s", playwright.PlaywrightVersion)
 
 			installPlaywright := command.Make(
 				common.IndentedWriterFactory(0, playwright.Logger),
-				fmt.Sprintf("%s/usr/bin/python3", playwright.TemporaryLayer.Path),
+				pythonBinary,
 				"-m",
 				"pip",
 				"install",
@@ -84,7 +104,7 @@ func (playwright PlaywrightLayer) Contribute(layer libcnb.Layer) (libcnb.Layer, 
 			playwright.Logger.Header("Installing playwright dependencies")
 			playwrightInstall := command.Make(
 				common.IndentedWriterFactory(0, playwright.Logger),
-				fmt.Sprintf("%s/usr/bin/python3", playwright.TemporaryLayer.Path),
+				pythonBinary,
 				"-m",
 				"playwright",
 				"install",
@@ -114,8 +134,57 @@ func (playwright PlaywrightLayer) Name() string {
 	return "playwright"
 }
 
+// resolvePythonBinary locates a python interpreter to drive pip and playwright.
+// It prefers the layer's freshly apt-installed interpreter, then falls back to
+// the base image's system python. On the paketo "full" builders python already
+// ships in the base image and is never copied into the layer, so the system
+// fallback is what makes those builds work — and jammy ships /usr/bin/python3
+// (not an unversioned /usr/bin/python), so we must probe python3 and versioned
+// names under the system root too.
+func resolvePythonBinary(basePath string) (string, error) {
+	for _, root := range []string{basePath, systemRoot} {
+		if binary := findPythonUnder(root); binary != "" {
+			return binary, nil
+		}
+	}
+
+	return "", fmt.Errorf("no python binary found under %s/usr/bin or %s/usr/bin", basePath, systemRoot)
+}
+
+// findPythonUnder returns the first python interpreter under root/usr/bin,
+// trying python3, then python, then a real version-suffixed python3.N, or ""
+// when none is present.
+func findPythonUnder(root string) string {
+	for _, name := range []string{"usr/bin/python3", "usr/bin/python"} {
+		full := filepath.Join(root, name)
+		if info, err := os.Stat(full); err == nil && !info.IsDir() {
+			return full
+		}
+	}
+
+	// The `python3.*` glob also matches non-interpreters like python3.10-config
+	// and python3.10m, plus the usr/lib/python3.10 directory, so keep only a
+	// real python3.N file.
+	versioned := regexp.MustCompile(`python3\.[0-9]+$`)
+	matches, _ := filepath.Glob(filepath.Join(root, "usr/bin/python3.*"))
+	for _, match := range matches {
+		if !versioned.MatchString(match) {
+			continue
+		}
+		if info, err := os.Stat(match); err == nil && !info.IsDir() {
+			return match
+		}
+	}
+
+	return ""
+}
+
+// systemRoot is the base image's filesystem root, probed when the layer has no
+// python of its own. It is a variable so tests can point it at a temp dir.
+var systemRoot = "/"
+
 func ResolvePlaywrightVersion(logger bard.Logger) (string, string) {
-	playwrightVersion := "1.43.0"
+	playwrightVersion := "1.62.0"
 	playwrightLanguage := "python"
 	resolved := false
 
