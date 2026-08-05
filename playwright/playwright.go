@@ -121,49 +121,54 @@ func (playwright PlaywrightLayer) Name() string {
 	return "playwright"
 }
 
-// resolvePythonBinary probes for a python interpreter under basePath/usr/bin,
-// trying a few candidate paths in priority order and returning the first that
-// exists on disk. The apt-installed interpreter is not always present at
-// usr/bin/python3 — depending on the base image it may only exist as
-// usr/bin/python or as a version-suffixed binary such as usr/bin/python3.10.
+// resolvePythonBinary locates a python interpreter to drive pip and playwright.
+// It prefers the layer's freshly apt-installed interpreter, then falls back to
+// the base image's system python. On the paketo "full" builders python already
+// ships in the base image and is never copied into the layer, so the system
+// fallback is what makes those builds work — and jammy ships /usr/bin/python3
+// (not an unversioned /usr/bin/python), so we must probe python3 and versioned
+// names under the system root too.
 func resolvePythonBinary(basePath string) (string, error) {
-	candidates := []string{
-		"usr/bin/python3",
-		"usr/bin/python",
-	}
-
-	for _, candidate := range candidates {
-		full := filepath.Join(basePath, candidate)
-		if _, err := os.Stat(full); err == nil {
-			return full, nil
+	for _, root := range []string{basePath, systemRoot} {
+		if binary := findPythonUnder(root); binary != "" {
+			return binary, nil
 		}
 	}
 
-	// Fall back to a version-suffixed interpreter, e.g. usr/bin/python3.10.
+	return "", fmt.Errorf("no python binary found under %s/usr/bin or %s/usr/bin", basePath, systemRoot)
+}
+
+// findPythonUnder returns the first python interpreter under root/usr/bin,
+// trying python3, then python, then a real version-suffixed python3.N, or ""
+// when none is present.
+func findPythonUnder(root string) string {
+	for _, name := range []string{"usr/bin/python3", "usr/bin/python"} {
+		full := filepath.Join(root, name)
+		if info, err := os.Stat(full); err == nil && !info.IsDir() {
+			return full
+		}
+	}
+
 	// The `python3.*` glob also matches non-interpreters like python3.10-config
-	// and python3.10m, so filter down to a real `python3.N` binary.
+	// and python3.10m, plus the usr/lib/python3.10 directory, so keep only a
+	// real python3.N file.
 	versioned := regexp.MustCompile(`python3\.[0-9]+$`)
-	matches, _ := filepath.Glob(filepath.Join(basePath, "usr/bin/python3.*"))
+	matches, _ := filepath.Glob(filepath.Join(root, "usr/bin/python3.*"))
 	for _, match := range matches {
 		if !versioned.MatchString(match) {
 			continue
 		}
-		if _, err := os.Stat(match); err == nil {
-			return match, nil
+		if info, err := os.Stat(match); err == nil && !info.IsDir() {
+			return match
 		}
 	}
 
-	if _, err := os.Stat(systemPythonFallback); err == nil {
-		return systemPythonFallback, nil
-	}
-
-	return "", fmt.Errorf("no python binary found under %s/usr/bin", basePath)
+	return ""
 }
 
-// systemPythonFallback is the base-image interpreter used when the layer
-// contains no python of its own. It is a variable rather than a literal so
-// tests can point it at a controlled path.
-var systemPythonFallback = "/usr/bin/python"
+// systemRoot is the base image's filesystem root, probed when the layer has no
+// python of its own. It is a variable so tests can point it at a temp dir.
+var systemRoot = "/"
 
 func ResolvePlaywrightVersion(logger bard.Logger) (string, string) {
 	playwrightVersion := "1.43.0"
