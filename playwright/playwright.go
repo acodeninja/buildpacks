@@ -153,12 +153,17 @@ func resolvePythonBinary(basePath string) (string, error) {
 		}
 	}
 
-	if _, err := os.Stat("/usr/bin/python"); err == nil {
-		return "/usr/bin/python", nil
+	if _, err := os.Stat(systemPythonFallback); err == nil {
+		return systemPythonFallback, nil
 	}
 
 	return "", fmt.Errorf("no python binary found under %s/usr/bin", basePath)
 }
+
+// systemPythonFallback is the base-image interpreter used when the layer
+// contains no python of its own. It is a variable rather than a literal so
+// tests can point it at a controlled path.
+var systemPythonFallback = "/usr/bin/python"
 
 func ResolvePlaywrightVersion(logger bard.Logger) (string, string) {
 	playwrightVersion := "1.43.0"
