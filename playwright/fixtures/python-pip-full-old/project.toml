@@ -8,3 +8,6 @@ builder = "paketobuildpacks/builder-jammy-full:0.3.625"
 
 [[io.buildpacks.group]]
 uri = "../../"
+
+[[io.buildpacks.group]]
+uri = "paketo-buildpacks/python"
