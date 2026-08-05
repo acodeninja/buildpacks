@@ -153,6 +153,10 @@ func resolvePythonBinary(basePath string) (string, error) {
 		}
 	}
 
+	if _, err := os.Stat("/usr/bin/python"); err == nil {
+		return "/usr/bin/python", nil
+	}
+
 	return "", fmt.Errorf("no python binary found under %s/usr/bin", basePath)
 }
 
