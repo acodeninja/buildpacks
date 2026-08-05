@@ -184,7 +184,7 @@ func findPythonUnder(root string) string {
 var systemRoot = "/"
 
 func ResolvePlaywrightVersion(logger bard.Logger) (string, string) {
-	playwrightVersion := "1.43.0"
+	playwrightVersion := "1.62.0"
 	playwrightLanguage := "python"
 	resolved := false
 
