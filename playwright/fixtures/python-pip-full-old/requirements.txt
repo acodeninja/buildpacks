@@ -1,0 +1,5 @@
+pytest
+pytest-playwright
+    #   playwright
+boto3==1.35.17
+playwright==1.62.0
