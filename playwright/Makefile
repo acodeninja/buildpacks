@@ -8,7 +8,7 @@ include ../scripts/requirements.mk
 include ../scripts/package.mk
 
 .PHONY: test
-test: test-python-pipenv test-python-pip test-python-pip-full test-python-poetry
+test: test-python-pipenv test-python-pip test-python-pip-full test-python-pip-full-old test-python-poetry
 
 .PHONY: test-python-pipenv
 test-python-pipenv: package
@@ -24,6 +24,11 @@ test-python-pip: package
 test-python-pip-full: package
 	@cd fixtures/python-pip-full && pack build --clear-cache test-playwright-pip-full
 	@docker run --rm --platform linux/amd64 --entrypoint test test-playwright-pip-full
+
+.PHONY: test-python-pip-full-old
+test-python-pip-full-old: package
+	@cd fixtures/python-pip-full-old && pack build --clear-cache test-playwright-pip-full-old
+	@docker run --rm --platform linux/amd64 --entrypoint test test-playwright-pip-full-old
 
 .PHONY: test-python-poetry
 test-python-poetry: package
