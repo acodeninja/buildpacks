@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
 	"regexp"
 
 	"github.com/BurntSushi/toml"
@@ -62,11 +63,17 @@ func (playwright PlaywrightLayer) Contribute(layer libcnb.Layer) (libcnb.Layer, 
 		case "python":
 			err = apt.InstallAptPackages(playwright.TemporaryLayer, []string{"python3-distutils", "python3-full", "python3-pip"}, []apt.AdditionalSource{}, playwright.Logger, true)
 
+			var pythonBinary string
+			pythonBinary, err = resolvePythonBinary(playwright.TemporaryLayer.Path)
+			if err != nil {
+				return layer, err
+			}
+
 			playwright.Logger.Headerf("Installing playwright version %s", playwright.PlaywrightVersion)
 
 			installPlaywright := command.Make(
 				common.IndentedWriterFactory(0, playwright.Logger),
-				fmt.Sprintf("%s/usr/bin/python3", playwright.TemporaryLayer.Path),
+				pythonBinary,
 				"-m",
 				"pip",
 				"install",
@@ -84,7 +91,7 @@ func (playwright PlaywrightLayer) Contribute(layer libcnb.Layer) (libcnb.Layer, 
 			playwright.Logger.Header("Installing playwright dependencies")
 			playwrightInstall := command.Make(
 				common.IndentedWriterFactory(0, playwright.Logger),
-				fmt.Sprintf("%s/usr/bin/python3", playwright.TemporaryLayer.Path),
+				pythonBinary,
 				"-m",
 				"playwright",
 				"install",
@@ -112,6 +119,41 @@ func (playwright PlaywrightLayer) Contribute(layer libcnb.Layer) (libcnb.Layer, 
 
 func (playwright PlaywrightLayer) Name() string {
 	return "playwright"
+}
+
+// resolvePythonBinary probes for a python interpreter under basePath/usr/bin,
+// trying a few candidate paths in priority order and returning the first that
+// exists on disk. The apt-installed interpreter is not always present at
+// usr/bin/python3 — depending on the base image it may only exist as
+// usr/bin/python or as a version-suffixed binary such as usr/bin/python3.10.
+func resolvePythonBinary(basePath string) (string, error) {
+	candidates := []string{
+		"usr/bin/python3",
+		"usr/bin/python",
+	}
+
+	for _, candidate := range candidates {
+		full := filepath.Join(basePath, candidate)
+		if _, err := os.Stat(full); err == nil {
+			return full, nil
+		}
+	}
+
+	// Fall back to a version-suffixed interpreter, e.g. usr/bin/python3.10.
+	// The `python3.*` glob also matches non-interpreters like python3.10-config
+	// and python3.10m, so filter down to a real `python3.N` binary.
+	versioned := regexp.MustCompile(`python3\.[0-9]+$`)
+	matches, _ := filepath.Glob(filepath.Join(basePath, "usr/bin/python3.*"))
+	for _, match := range matches {
+		if !versioned.MatchString(match) {
+			continue
+		}
+		if _, err := os.Stat(match); err == nil {
+			return match, nil
+		}
+	}
+
+	return "", fmt.Errorf("no python binary found under %s/usr/bin", basePath)
 }
 
 func ResolvePlaywrightVersion(logger bard.Logger) (string, string) {
