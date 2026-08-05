@@ -7,7 +7,4 @@ version = "0.1"
 builder = "paketobuildpacks/builder-jammy-full:0.3.625"
 
 [[io.buildpacks.group]]
-uri = "paketo-buildpacks/python"
-
-[[io.buildpacks.group]]
 uri = "../../"
