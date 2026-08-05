@@ -61,12 +61,25 @@ func (playwright PlaywrightLayer) Contribute(layer libcnb.Layer) (libcnb.Layer, 
 
 		switch playwright.PlaywrightLanguage {
 		case "python":
-			err = apt.InstallAptPackages(playwright.TemporaryLayer, []string{"python3-distutils", "python3-full", "python3-pip"}, []apt.AdditionalSource{}, playwright.Logger, true)
+			// If the base image already provides a python, use it and skip the
+			// expensive temporary-layer apt install. Only the "base" builders,
+			// which ship no system python, take the apt path below.
+			pythonBinary := findPythonUnder(systemRoot)
 
-			var pythonBinary string
-			pythonBinary, err = resolvePythonBinary(playwright.TemporaryLayer.Path)
-			if err != nil {
-				return layer, err
+			if pythonBinary == "" {
+				playwright.Logger.Header("No system python found, installing python via APT")
+
+				err = apt.InstallAptPackages(playwright.TemporaryLayer, []string{"python3-distutils", "python3-full", "python3-pip"}, []apt.AdditionalSource{}, playwright.Logger, true)
+				if err != nil {
+					return layer, err
+				}
+
+				pythonBinary, err = resolvePythonBinary(playwright.TemporaryLayer.Path)
+				if err != nil {
+					return layer, err
+				}
+			} else {
+				playwright.Logger.Bodyf("Using system python at %s", pythonBinary)
 			}
 
 			playwright.Logger.Headerf("Installing playwright version %s", playwright.PlaywrightVersion)
